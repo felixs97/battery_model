@@ -5,7 +5,6 @@ Created on Fri Nov  3 14:54:12 2023
 
 @author: felix
 """
-
 import numpy as np
 import pandas as pd
 import os
@@ -16,7 +15,7 @@ import matplotlib.pyplot as plt
 
 #%% Define functions
 #%%% Setting properties
-def set_electrode_prp(L, pi, lambda_, kappa):
+def set_electrode_prp(L, pi, lambda_, kappa, D, c0):
     """
     create dictionary for electrode parameters
 
@@ -36,15 +35,15 @@ def set_electrode_prp(L, pi, lambda_, kappa):
     Electrode : dictionary
         containing the material value accessable due to the name.
     """
-    names  = ['L', 'pi', 'lambda_', 'kappa']
-    values = [L, pi, lambda_, kappa]
+    names  = ['L', 'pi', 'lambda_', 'kappa', 'D', 'c0']
+    values = [L, pi, lambda_, kappa, D, c0]
     Electrode = {}
     for i, name in enumerate(names):
         Electrode[name] = values[i]
     return Electrode
 
 def set_electrolyte_prp(L, pi, lambda_, kappa, t1, t2, l11, l22, l12, q1, q2, 
-                        TDF_LL, TDF_LD, TDF_DL, TDF_DD, inclMass = True):
+                        TDF_LL, TDF_LD, TDF_DL, TDF_DD, c0, inclMass = True):
     """
     create dictionary for electrolyte parameters 
     defining constant coefficients for better readablity
@@ -89,8 +88,8 @@ def set_electrolyte_prp(L, pi, lambda_, kappa, t1, t2, l11, l22, l12, q1, q2,
         bq, aphi = pi, pi
     
     names = ['L', 'pi', 'lambda_', 'kappa', 'a1', 'a2', 'b1', 'b2', 'aq', 'bq', 'aphi', 'bphi', 
-             'TDF_LL', 'TDF_LD', 'TDF_DL', 'TDF_DD']
-    values = [L, pi, lambda_, kappa, a1, a2, b1, b2, aq, bq, aphi, bphi, TDF_LL, TDF_LD, TDF_DL, TDF_DD]
+             'TDF_LL', 'TDF_LD', 'TDF_DL', 'TDF_DD', 'c0']
+    values = [L, pi, lambda_, kappa, a1, a2, b1, b2, aq, bq, aphi, bphi, TDF_LL, TDF_LD, TDF_DL, TDF_DD, c0]
     Electrolyte = {}
     for i, name in enumerate(names):
         Electrolyte[name] = values[i]
@@ -244,8 +243,10 @@ def mu(layer, mu0):
 def dcdx(x, c, TDF_LL, TDF_LD, TDF_DL, TDF_DD, dmu1dx, dmu2dx):
     return (dmu1dx - TDF_LD/TDF_DD * dmu2dx)/(TDF_LL - TDF_LD/TDF_DD*TDF_DL) * c/(R*Tamb)
 
-def c(c0):
+def c_electrolyte():
     x = res['E']['x']
+    c0 = prp['E']['c0']
+    
     TDF_LL, TDF_LD, TDF_DL, TDF_DD = prp['E']['TDF_LL'], prp['E']['TDF_LD'], prp['E']['TDF_DL'], prp['E']['TDF_DD']
     dmu1dx, dmu2dx = np.mean(res['E']['dmu1dx']), np.mean(res['E']['dmu1dx'])
     
@@ -444,12 +445,16 @@ res = {layer: {} for layer in layers} # initialise empty dict for results
 prp['A'] = set_electrode_prp(  L       = 74 * 10**(-6),          # m
                                pi      =  5.74*Tamb,             # J / mol
                                lambda_ =  1.11,                  # W / K / m
-                               kappa   = 2203.8 )                # S / m
+                               kappa   = 2203.8,                 # S / m
+                               D       = 10**(-11),              # m2/s
+                               c0      = 35000)                  # mol/m3
 
 prp['C'] = set_electrode_prp(  L       = 67 * 10**(-6),          # m
                                pi      = 14.5*Tamb,              # J / mol
                                lambda_ = 2.1,#0.32,                   # W / K / m
-                               kappa   = 10)#6.75 )                  # S / m
+                               kappa   = 10,#6.75 ,                  # S / m
+                               D       = 10**(-11),              # m2/s
+                               c0      = 35000)                  # mol/m3
 
 prp['E'] = set_electrolyte_prp(L       =  12 * 10**(-6),         # m
                                pi      =  24.7 * 10**3,          # J / mol
@@ -465,7 +470,9 @@ prp['E'] = set_electrolyte_prp(L       =  12 * 10**(-6),         # m
                                TDF_LL  =   1.45,
                                TDF_LD  = - 0.29,
                                TDF_DL  = - 0.98,
-                               TDF_DD  =   1.23, inclMass=True)
+                               TDF_DD  =   1.23, 
+                               c0      = 1200,                   # mol/m3
+                               inclMass=True)
 
 prp['AS'] = set_surface_prp(   L       =  50 * 10**(-9),         # m
                                lambda_ =   0.65,                 # W / K / m
@@ -513,8 +520,7 @@ res['E']['dmu1dx'], res['E']['dmu2dx'] = dmudx('E')
 res['E']['mu1'], res['E']['mu2'] = mu('E', [0,0])
 
 #%%% Concentration Profile
-c0 = 1000 # Li-concentration on anode surface
-res['E']['c'] = c(c0)
+res['E']['c'] = c_electrolyte()
 # Concentration in porous electrodes is set to a fix value -> concentration in solid not in electrolyte between solid
 res["A"]["c"] = np.ones(res["A"]["x"].size) * 14000#c0 
 res["C"]["c"] = np.ones(res["C"]["x"].size) * 10000#res['E']['c'][-1]
@@ -534,13 +540,13 @@ res['CS']['sigma'] = sigma_sf('E', 'C', 'CS')
 res['C']['sigma']  = sigma_bulk('C')
 
 #%%% Consistent Check
-integrate_sigma()
-calc_entropy_diff("A")
+#integrate_sigma()
+#calc_entropy_diff("A")
 
 #%% Create Plots
 #plot_profile("T", "T / $K$", "Temperature profile")
 #plot_profile("phi", "$\phi$ / $V$", "Electrical Potential Profile")
-plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
+#plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
 
 #plot_single("Jq", "J'$_q$ / $Wm^{-2}$", "Measurable Heatflux")
 #plot_single("sigma", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production", plot_sf=True)
@@ -551,7 +557,7 @@ plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accu
 
 #%% Save data
 dirName = 'C6_LCO'
-save_to_csv(dirName, overwrite=False)
-save_result_dict(dirName)
+#save_to_csv(dirName, overwrite=False)
+#save_result_dict(dirName)
 
 #plt.plot(res['A']['x']*10**6, res['A']['c']*10**(-3))
