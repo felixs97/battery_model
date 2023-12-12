@@ -8,6 +8,7 @@ Created on Tue Dec 12 08:41:49 2023
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
 
 from params_sys import j, F, Tamb, R
 import params_LCO as parameter_set
@@ -20,11 +21,6 @@ class Subsystem:
     
     def init_mesh(self, nx, init_x):
         self.x = np.linspace(init_x, init_x + self.params["length"], nx)
-    
-    def solve_ode(self, T0, dTdx0, x):
-        S0 = (T0, dTdx0)
-        sol = solve_ivp(self.dSdx, (x[0], x[-1]), S0, t_eval=x)
-        self.variables["T"], self.variables["dTdx"] = sol.y
 
 class Surface(Subsystem):
     def __init__(self, parameter):
@@ -155,7 +151,7 @@ class LiionModel:
         if sf == "Anode Surface":
             dT_is = lambda_i/lambda_s * dTdx_i
             dT_so = dT_is + pi_s*j/(lambda_s*F) - eta*j/lambda_s
-            dTdx_oi = (lambda_o * dT_so + j/F*(b_q - pi_o))/(lambda_o - a_q/T_i**2)
+            dTdx_oi = (lambda_s * dT_so + j/F*(b_q - pi_o))/(lambda_o - a_q/T_i**2)
         else:
             dT_is = ((lambda_i - a_q/T_i**2)*dTdx_i + j/F*(pi_i - b_q))/lambda_s
             dT_so = dT_is + pi_s*j/(lambda_s*F) - eta*j/lambda_s
@@ -175,7 +171,7 @@ class LiionModel:
         self.submodels[bulk].variables["T"], self.submodels[bulk].variables["dTdx"] = sol.y
     
     def opt_inital_guess(self, dTdxGuess):
-        self.solve_system(self.bc["lbc"], dTdxGuess)
+        self.solve_system(self.bc["lbc"], dTdxGuess[0])
         return [self.bc["rbc"] - self.submodels["Cathode"].variables["T"][-1]]
     
     def solve(self):
@@ -190,6 +186,17 @@ model.init_mesh({"Anode":       50,
                  "Cathode":     50})
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
+
+T1 = model.submodels["Anode"].variables["T"] 
+T2 = model.submodels["Electrolyte"].variables["T"]
+T3 = model.submodels["Cathode"].variables["T"]
+x1 = model.submodels["Anode"].x
+x2 = model.submodels["Electrolyte"].x
+x3 = model.submodels["Cathode"].x
+
+plt.plot(x1, T1)
+plt.plot(x2, T2)
+plt.plot(x3, T3)
         
 
 

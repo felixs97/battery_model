@@ -143,6 +143,29 @@ def dSdx_sf(i, o, sf):
     
     return[To, dTdxo, Ts]
 
+
+def dSdx_sf2(i, o, sf):
+    lambda_o, lambda_i, lambda_s = prp[o]['lambda_'], prp[i]['lambda_'], prp[sf]['lambda_']
+    pi_o,     pi_i,     pi_s     = prp[o]['pi'], prp[i]['pi'], prp[sf]['pi']
+    eta      = prp[sf]['eta']
+    aq, bq   = prp["E"]["aq"], prp["E"]["bq"]
+    T        = res[i]['T'][-1]
+    dTdx     = res[i]['dTdx'][-1]
+    
+    if sf == "AS":
+        dTis = lambda_i/lambda_s * dTdx
+        Ts = dTis + T
+        dTso = dTis + pi_s*j/(lambda_s*F) - eta*j/lambda_s
+        dTdxoi = (lambda_s * dTso + j/F*(bq - pi_o))/(lambda_o - aq/T**2)
+    else:
+        dTis = ((lambda_i - aq/T**2)*dTdx + j/F*(pi_i - bq))/lambda_s
+        dTso = dTis + pi_s*j/(lambda_s*F) - eta*j/lambda_s
+        dTdxoi =  lambda_s/lambda_o * dTso
+        
+    Ts = T + dTis
+    To = Ts + dTso
+    return[To, dTdxoi, Ts]
+
 def solve_odes(T0, dTdx0):
     # Anode
     S0 = (T0, dTdx0)
@@ -151,7 +174,7 @@ def solve_odes(T0, dTdx0):
     res['A']['T'], res['A']['dTdx'] = sol.y
     
     # Anode Surface as boundary condition
-    Te, dTdxe, Ts = dSdx_sf('A', 'E', 'AS')
+    Te, dTdxe, Ts = dSdx_sf2('A', 'E', 'AS')
     res['AS']['T'] = [Ts, Ts]
     
     # Electrolyte
@@ -161,7 +184,7 @@ def solve_odes(T0, dTdx0):
     res['E']['T'], res['E']['dTdx'] = sol.y
     
     # Cathode Surface as boundary condtion
-    Tc, dTdxc, Ts = dSdx_sf('E', 'C', 'CS')
+    Tc, dTdxc, Ts = dSdx_sf2('E', 'C', 'CS')
     res['CS']['T'] = [Ts, Ts]
     
     # Cathode
@@ -534,13 +557,13 @@ res['CS']['sigma'] = sigma_sf('E', 'C', 'CS')
 res['C']['sigma']  = sigma_bulk('C')
 
 #%%% Consistent Check
-integrate_sigma()
-calc_entropy_diff("A")
+#integrate_sigma()
+#calc_entropy_diff("A")
 
 #%% Create Plots
-#plot_profile("T", "T / $K$", "Temperature profile")
+plot_profile("T", "T / $K$", "Temperature profile")
 #plot_profile("phi", "$\phi$ / $V$", "Electrical Potential Profile")
-plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
+#plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
 
 #plot_single("Jq", "J'$_q$ / $Wm^{-2}$", "Measurable Heatflux")
 #plot_single("sigma", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production", plot_sf=True)
@@ -550,8 +573,8 @@ plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accu
 #plot_sf_temp(x, T, 'CS')
 
 #%% Save data
-dirName = 'C6_LCO'
-save_to_csv(dirName, overwrite=False)
-save_result_dict(dirName)
+#dirName = 'C6_LCO'
+#save_to_csv(dirName, overwrite=False)
+#save_result_dict(dirName)
 
 #plt.plot(res['A']['x']*10**6, res['A']['c']*10**(-3))
