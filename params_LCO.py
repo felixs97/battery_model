@@ -12,6 +12,7 @@ anode = {
     "thermal conductivity":          1.11,                  # W/m/K
     "electric conductivity":      2204.8,                   # S/m
     "peltier coefficient":           5.74 *Tamb,            # J/mol
+    "diffusion coefficient":        10    *10**(-11),
     "thermodynamic factor":          1                      # -
     }
 
@@ -20,6 +21,7 @@ cathode = {
     "thermal conductivity":          2.1,                   # W/m/K
     "electric conductivity":        10,                     # S/m
     "peltier coefficient":          14.50 *Tamb,            # J/mol
+    "diffusion coefficient":        10    *10**(-11),
     "thermodynamic factor":         1                       # -
     } 
 
