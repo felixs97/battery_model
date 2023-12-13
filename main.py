@@ -13,5 +13,5 @@ LCOmodel = c.LiionModel(params_LCO)
 LCOmodel.init_mesh({"Anode":       100,
                  "Electrolyte": 20,
                  "Cathode":     100})
-LCOmodel.boundary_conditions(Tamb, Tamb+1)
+LCOmodel.boundary_conditions(Tamb, Tamb)
 LCOmodel.solve()

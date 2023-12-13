@@ -37,6 +37,12 @@ class Surface(Subsystem):
         self.params["gibbs energy"] = - OCP * F
         self.params["overpotential"] = self.__overpotential(j0)
         self.params["thermal conductivity"] = lambda_ / (k*L)
+        
+    def dphi(self, T_s, T_i, T_o, pi_i, pi_o):
+        eta = self.params["overpotential"]
+        dG = self.params["gibbs energy"]
+        
+        return - pi_i/(T_o*F)*(T_s - T_i) - pi_o/(T_o*F)*(T_o - T_s) - eta - dG/F
 
 class Electrolyte(Subsystem):
     def __init__(self, parameter, mass_trans = True):
@@ -88,6 +94,48 @@ class Electrolyte(Subsystem):
         rhs = -j*a_phi/(T * F) / denom * dTdx - b_phi*T*j**2/F**2 / denom - j**2/kappa / denom
         
         return [dTdx, rhs]
+    
+    def Jq(self, T, dTdx):
+        lambda_ = self.params["thermal conductivity"]
+        a_q = self.params["a_q"]
+        b_q = self.params["b_q"]
+        
+        self.variables["Jq"] = -(lambda_ - a_q/T**2)*dTdx + j/F*b_q
+    
+    def dphidx(self, T, dTdx):
+        kappa = self.params["electric conductivity"]
+        a_phi = self.params["a_phi"]
+        b_phi = self.params["b_phi"]
+        
+        self.variables["dphidx"] = - a_phi/(T*F)*dTdx - (b_phi*T/F**2 + 1/kappa)*j
+    
+    def dmuLdx(self, T, dTdx):
+        a_L = self.params["a_L"]
+        b_L = self.params["b_L"]
+        
+        self.variables["dmuLdx"] = a_L/T*dTdx - b_L*T/F*j
+    
+    def dmuDdx(self, T, dTdx):
+        a_D = self.params["a_D"]
+        b_D = self.params["b_D"]
+        
+        self.variables["dmuDdx"] = a_D/T*dTdx - b_D*T/F*j
+    
+    def __dcLdx(self, x, c, T, dmuDdx, dmuLdx):
+        TDF_LL = self.params["thermodynamic factor LL"]
+        TDF_DD = self.params["thermodynamic factor DD"]
+        TDF_LD = self.params["thermodynamic factor LD"]
+        TDF_DL = self.params["thermodynamic factor DL"]
+        
+        return (dmuLdx - TDF_LD/TDF_DD*dmuDdx)/(TDF_LL - TDF_LD*TDF_DL/TDF_DD) * c/(R*T)
+    
+    def c(self, c0, T, dmuDdx, dmuLdx):
+        x = self.x
+        
+        sol = solve_ivp(self.__dcLdx, (x[0], x[-1]), [c0], t_eval=x, args=(T, dmuDdx, dmuLdx))
+        c, dcdx = sol.y[0], sol.y[1]
+        
+        self.variables["c"], self.variables["dcdx"] = c, dcdx
  
 class Electrode(Subsystem):
     def __init__(self, parameter, mass_trans=True):
@@ -108,6 +156,28 @@ class Electrode(Subsystem):
         rhs     = - pi*j / (lambda_*F*T) * dTdx - j**2 / (lambda_*kappa)
         
         return[dTdx, rhs]
+    
+    def Jq(self, dTdx):
+        lambda_ = self.params["thermal conductivity"]
+        pi = self.params["peltier coefficient"]
+        
+        self.variables["Jq"] = - lambda_*dTdx + pi/F*j
+    
+    def dphidx(self, T, dTdx):
+        pi = self.params["peltier coefficient"]
+        kappa = self.params["electric conductivity"]
+        
+        self.variables["dphidx"] = pi/F * dTdx/T + j/kappa
+    
+    def dcdx(self):
+        D = self.params["diffusion coefficient"]
+        
+        self.variables["dcdx"] = -j / (D*F)
+    
+    def dmudx(self, c, dcdx):
+        TDF = self.params["thermodynamic factor"]
+        
+        self.variables["dmudx"] = TDF*R*Tamb/c * dcdx
   
 class LiionModel:
     def __init__(self, params):
@@ -159,13 +229,13 @@ class LiionModel:
         self.submodels[o].variables["T"] = T_o
         self.submodels[o].variables["dTdx"] = dTdx_oi
     
-    def __solve_bulk(self, T0, dTdx0, bulk):
+    def __solve_bulk(self, T0, dTdx0, domain):
         S0 = (T0, dTdx0)
-        x = self.submodels[bulk].x
-        sol = solve_ivp(self.submodels[bulk].dSdx, (x[0], x[-1]), S0, t_eval=x)
-        self.submodels[bulk].variables["T"], self.submodels[bulk].variables["dTdx"] = sol.y
+        x = self.submodels[domain].x
+        sol = solve_ivp(self.submodels[domain].dSdx, (x[0], x[-1]), S0, t_eval=x)
+        self.submodels[domain].variables["T"], self.submodels[domain].variables["dTdx"] = sol.y
     
-    def __solve_system(self, T0, dTdx0):
+    def __solve_temp(self, T0, dTdx0):
         self.__solve_bulk(T0, dTdx0, "Anode")
         self.__solve_surface("Anode", "Electrolyte", "Anode Surface")
         self.__solve_bulk(self.submodels["Electrolyte"].variables["T"], self.submodels["Electrolyte"].variables["dTdx"], "Electrolyte")
@@ -173,13 +243,16 @@ class LiionModel:
         self.__solve_bulk(self.submodels["Cathode"].variables["T"], self.submodels["Cathode"].variables["dTdx"], "Cathode")
     
     def __opt_inital_guess(self, dTdxGuess):
-        self.__solve_system(self.bc["lbc"], dTdxGuess[0])
+        self.__solve_temp(self.bc["lbc"], dTdxGuess[0])
         return [self.bc["rbc"] - self.submodels["Cathode"].variables["T"][-1]]
     
     def solve(self):
         dTdx0, = fsolve(self.__opt_inital_guess, [1])
-        self.__solve_system(self.bc["lbc"], dTdx0)
+        self.__solve_temp(self.bc["lbc"], dTdx0)
         
+        self.submodels["Anode"].Jq(self.submodels["Anode"].variables["dTdx"])
+        self.submodels["Electrolyte"].Jq(self.submodels["Electrolyte"].variables["T"], self.submodels["Electrolyte"].variables["dTdx"])
+        self.submodels["Cathode"].Jq(self.submodels["Cathode"].variables["dTdx"])
 
 
         
