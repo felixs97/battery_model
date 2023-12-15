@@ -8,6 +8,7 @@ Created on Tue Dec 12 08:41:49 2023
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
 
 from params_sys import j, F, Tamb, R
 
@@ -17,7 +18,7 @@ class Subsystem:
         self.variables = {}
     
     def init_mesh(self, nx, init_x):
-        self.x = np.linspace(init_x, init_x + self.params["length"], nx)
+        self.variables["x"] = np.linspace(init_x, init_x + self.params["length"], nx)
 
 class Surface(Subsystem):
     def __init__(self, parameter):
@@ -246,13 +247,36 @@ class LiionModel:
         self.__solve_temp(self.bc["lbc"], dTdxGuess[0])
         return [self.bc["rbc"] - self.submodels["Cathode"].variables["T"][-1]]
     
+    def __integrate(self, domain, dydx_string, y_string, y0):
+        dx = np.gradient(self.submodels[domain].x)
+        dy = self.submodels[domain].variables[dydx_string] * dx
+        y = np.zeros(dy.size)
+        y[0] = y0
+        
+        for i in range(0, len(y)-1):
+            y[i+1] = y[i] + dy[i]
+        
+        self.submodels[domain].variables[y_string] = y
+    
     def solve(self):
+        # solve for temperature
         dTdx0, = fsolve(self.__opt_inital_guess, [1])
         self.__solve_temp(self.bc["lbc"], dTdx0)
         
+        # calculate measurable heatflux
         self.submodels["Anode"].Jq(self.submodels["Anode"].variables["dTdx"])
         self.submodels["Electrolyte"].Jq(self.submodels["Electrolyte"].variables["T"], self.submodels["Electrolyte"].variables["dTdx"])
         self.submodels["Cathode"].Jq(self.submodels["Cathode"].variables["dTdx"])
+        
+        # calculate electric potential
+        self.__integrate("Anode", "dphidx", "phi", 0)
+        
+        
+        
+    def plot(self):
+        
+        pass
+        
 
 
         
