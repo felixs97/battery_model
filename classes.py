@@ -243,7 +243,7 @@ class LiionModel:
         self.__solve_surface("Electrolyte", "Cathode", "Cathode Surface")
         self.__solve_bulk(self.submodels["Cathode"].variables["T"], self.submodels["Cathode"].variables["dTdx"], "Cathode")
     
-    def __opt_inital_guess(self, dTdxGuess):
+    def __opt_initial_guess(self, dTdxGuess):
         self.__solve_temp(self.bc["lbc"], dTdxGuess[0])
         return [self.bc["rbc"] - self.submodels["Cathode"].variables["T"][-1]]
     
@@ -260,7 +260,7 @@ class LiionModel:
     
     def solve(self):
         # solve for temperature
-        dTdx0, = fsolve(self.__opt_inital_guess, [1])
+        dTdx0, = fsolve(self.__opt_initial_guess, [1])
         self.__solve_temp(self.bc["lbc"], dTdx0)
         
         # calculate measurable heatflux

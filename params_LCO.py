@@ -13,7 +13,8 @@ parameter = {
         "thermal conductivity":          1.11,                  # W/m/K
         "electric conductivity":      2204.8,                   # S/m
         "peltier coefficient":           5.74 *Tamb,            # J/mol
-        "diffusion coefficient":        10    *10**(-11),
+        "diffusion coefficient":        10    *10**(-11),       # m2/s
+        "initial concentration":     25000,                     # mol/m3
         "thermodynamic factor":          1                      # -
         },
     "Cathode": {
@@ -21,7 +22,8 @@ parameter = {
         "thermal conductivity":          2.1,                   # W/m/K
         "electric conductivity":        10,                     # S/m
         "peltier coefficient":          14.50 *Tamb,            # J/mol
-        "diffusion coefficient":        10    *10**(-11),
+        "diffusion coefficient":        10    *10**(-11),       # m2/s
+        "initial concentration":      25000,                    # mol/m3
         "thermodynamic factor":         1                       # -
         },
     "Electrolyte": {
@@ -40,6 +42,7 @@ parameter = {
         "thermodynamic factor LD":     - 0.29,                  # -
         "thermodynamic factor DL":     - 0.98,                  # -
         "thermodynamic factor DD":       1.23,                  # -
+        "initial concentration L":     1000,                    # mol/m3
         },
     "Anode Surface": {
         "length":                      50     * 10**(-9),      # m
