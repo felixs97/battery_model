@@ -25,7 +25,7 @@ parameter = {
         "thermodynamic factor":         1                       # -
         },
     "Electrolyte": {
-        "length":                       23    *10**(-6),        # m
+        "length":                       12    *10**(-6),        # m
         "thermal conductivity":          0.2,                   # W/m/K
         "electric conductivity":         0.23,                  # S/m
         "peltier coefficient":          24.7  * 10**3,          # J/mol

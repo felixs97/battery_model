@@ -69,7 +69,29 @@ class LiionModel:
         self.solve_temp_system(dTdx0)
     
     def plot(self):
-        pass
+        fig, ax = plt.subplots(dpi=200)
+        
+        # Vertical spans 
+        ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
+        ax.axvspan(self.cathode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6), facecolor='r', alpha=0.1)
+        ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+        ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+        
+        for model in [self.anode, self.electrolyte, self.cathode]:
+            ax.plot(model.vars["x"]*10**6, model.vars["T"], color="r", linewidth=2)
+        
+        for model in [self.anode_sf, self.cathode_sf]:
+            ax.plot(model.vars["x"]*10**6, np.ones(2)*model.vars["T"], color="r", linewidth=2)
+        
+        ax.set_title("Temperature profile", fontsize=14)
+        ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
+        
+        y_ticks = ax.get_yticks()
+        ax.set_yticks(y_ticks)
+        ax.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
+        
+        ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
+        ax.set_ylabel("Temperature / K", fontsize=12)
     
     def solve_temp_surface(self, i, o, sf):
         """
@@ -345,5 +367,7 @@ model.init_mesh({"Anode":       100,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
+model.plot()
+
         
         
