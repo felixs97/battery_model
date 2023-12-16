@@ -16,11 +16,14 @@ import params_LCO
 
 #%% cell model
 class LiionModel:
-    def __init__(self, parameter):
-        self.parameter = parameter
+    def __init__(self, param_set):
+        self.parameter = param_set.parameter
         self.__add_submodels()
         
     def __add_submodels(self):
+        """
+        creates an instance of each submodel in the current LiionModel instance
+        """
         self.anode       = Electrode(self, "Anode")
         self.anode_sf    = Surface(self, "Anode Surface")
         self.electrolyte = Electrolyte(self, "Electrolyte")
@@ -28,18 +31,40 @@ class LiionModel:
         self.cathode       = Electrode(self, "Cathode")
 
     def init_mesh(self, nodes):
+        """
+        create mesh for whole cell
+        
+        Parameters
+        ----------
+        nodes : dictionary
+            keys: bulk phases (Anode, Electrolyte, Cathode)
+            values: number of nodes
+        """
         self.anode.init_mesh(0, nodes["Anode"])
-        self.anode_sf.init_mesh(self.anode.get("x")[-1], 2)
-        self.electrolyte.init_mesh(self.anode_sf.get("x")[-1], nodes["Electrolyte"])
-        self.cathode_sf.init_mesh(self.electrolyte.get("x")[-1], 2)
-        self.cathode.init_mesh(self.cathode_sf.get("x")[-1], nodes["Cathode"])
+        self.anode_sf.init_mesh(self.anode.vars["x"][-1], 2)
+        self.electrolyte.init_mesh(self.anode_sf.vars["x"][-1], nodes["Electrolyte"])
+        self.cathode_sf.init_mesh(self.electrolyte.vars["x"][-1], 2)
+        self.cathode.init_mesh(self.cathode_sf.vars["x"][-1], nodes["Cathode"])
     
     def boundary_conditions(self, lbc, rbc):
+        """
+        set temperature boundary conditions
+        
+        Parameters
+        ----------
+        lbc : float
+            left boundary condition (ambient temperature)
+        rbc : float
+            right boundary condition (ambient temperature)
+        """
         self.bc = {
             "lbc": lbc,
             "rbc": rbc}
     
     def solve(self):
+        """
+        final function to call in order to solve system
+        """
         dTdx0, = fsolve(self.opt_inital_guess, [1])
         self.solve_temp_system(dTdx0)
     
@@ -47,6 +72,21 @@ class LiionModel:
         pass
     
     def solve_temp_surface(self, i, o, sf):
+        """
+        solves equations for surface
+        T_s:     Temperature of the surface T_s
+        T_o:     Temperature of the bulk close to the surface on right-hand-side
+        dTdx_oi: Temperature gradient of the bulk close to the surface on right-hand-side
+        
+        Parameters
+        ----------
+        i : Submodel object (Electrode or Electrolyte)
+            bulk phase on the left side of the surface
+        o : Submodel object (Electrode or Electrolyte)
+            bulk phase on the right side of the surface
+        sf : Surface object
+            surface to calculate temperature for 
+        """
         lambda_i, lambda_o, lambda_s = i.params["thermal conductivity"], o.params["thermal conductivity"], sf.params["thermal conductivity"]
         pi_i, pi_o, pi_s = i.params["peltier coefficient"], o.params["peltier coefficient"], sf.params["peltier heat"]
         eta = sf.params["overpotential"]
@@ -72,21 +112,55 @@ class LiionModel:
         o.vars["dTdx"] = dTdx_oi
 
     def solve_temp_bulk(self, T0, dTdx0, bulk):
+        """
+        solves inital value problem
+
+        Parameters
+        ----------
+        T0 : float
+            inital Temperature, in this case on the left-hand-side
+        dTdx0 : float
+            inital Temperature gradient, in this case on the left-hand-side
+        bulk : object
+            submodel of corresponding bulk phase
+        """
         S0 = (T0, dTdx0)
-        x = bulk.get("x")
+        x = bulk.vars["x"]
         sol = solve_ivp(bulk.temp_function, (x[0], x[-1]), S0, t_eval=x)
         bulk.vars["T"], bulk.vars["dTdx"] = sol.y
         
     def solve_temp_system(self, dTdx_guess):
+        """
+        solves system of equations for temperature and the gradient in each phase
+        by using the defined boundary conditions on the left-hand-side and an inital guess for the temperature gradient
+
+        Parameters
+        ----------
+        dTdx_guess : float
+            guess of the temperature gradient at the left boundary
+        """
         self.solve_temp_bulk(self.bc["lbc"], dTdx_guess, self.anode)
         self.solve_temp_surface(self.anode, self.electrolyte, self.anode_sf)
-        self.solve_temp_bulk(self.electrolyte.get("T"), self.electrolyte.get("dTdx"), self.electrolyte)
+        self.solve_temp_bulk(self.electrolyte.vars["T"], self.electrolyte.vars["dTdx"], self.electrolyte)
         self.solve_temp_surface(self.electrolyte, self.cathode, self.cathode_sf)
-        self.solve_temp_bulk(self.cathode.get("T"), self.cathode.get("dTdx"), self.cathode)
+        self.solve_temp_bulk(self.cathode.vars["T"], self.cathode.vars["dTdx"], self.cathode)
         
     def opt_inital_guess(self, dTdx_guess):
+        """
+        function to iteratively optimize the guess for the temperature gradient on the left-hand side
+
+        Parameters
+        ----------
+        dTdx_guess : float
+            guess of temperature gradient 
+
+        Returns
+        -------
+        list
+            residue of the temperature on the right-hand-side for the inital guess of the gradient and the specified boundary condtion 
+        """
         self.solve_temp_system(dTdx_guess[0])
-        return [self.bc["rbc"] - self.cathode.get("T")[-1]]
+        return [self.bc["rbc"] - self.cathode.vars["T"][-1]]
         
 #%% submodel
 class Submodel:
@@ -96,14 +170,17 @@ class Submodel:
         self.vars = {}
     
     def init_mesh(self, init_x, nx):
-        self.vars["x"] = np.linspace(init_x, init_x + self.params["length"], nx)
+        """
+        initalise mesh for submodel by specifing the inital x value and the number of nodes
 
-    def get(self, key):
-        if key in self.vars:
-            value = self.vars[key]
-        else:
-            value = None
-        return value
+        Parameters
+        ----------
+        init_x : float
+            inital x-value of x-vector
+        nx : int
+            number of nodes
+        """
+        self.vars["x"] = np.linspace(init_x, init_x + self.params["length"], nx)
 
 #%%% surface    
 class Surface(Submodel):
@@ -112,9 +189,25 @@ class Surface(Submodel):
         self.__def_params()
     
     def __overpotential(self, j0):
+        """
+        function to determine overpotential of electrode reaction
+
+        Parameters
+        ----------
+        j0 : float
+            exchange current density of electrode
+
+        Returns
+        -------
+        float
+            returns the overpotential
+        """
         return 2*R*Tamb / F * np.log10(j/j0)
         
     def __def_params(self):
+        """
+        define more parameters that can be calculated from inital parameters
+        """
         L = self.params["length"]
         OCP = self.params["OCP"]
         j0 = self.params["exchange current density"]
@@ -133,10 +226,34 @@ class Electrode(Submodel):
         self.__def_params()
     
     def __def_params(self):
+        """
+        includes the option to neglect mass transport by setting the diffusion coefficent to zero
+        """
         if not self.mass_trans:
             self.params["diffusion coefficient"] = 0
     
     def temp_function(self, x, S):
+        """
+        input function for solve_ivp()
+        S is the vector containing the temperature T and its gradient dTdx
+        returned are the derivative of T (dTdx) and of dTdx (d2Tdx2)
+        
+        splits the second order ode into a system of two first order odes
+        
+        Parameters
+        ----------
+        x : float
+            spatial vector
+        S : tuple
+            vector of the first-order ode system
+            
+        Returns
+        -------
+        list
+            derivatives of each equation
+            T    -> dTdx
+            dTdx -> d2Tdx2
+        """
         pi = self.params["peltier coefficient"]
         lambda_ = self.params["thermal conductivity"]
         kappa = self.params["electric conductivity"]
@@ -154,6 +271,9 @@ class Electrolyte(Submodel):
         self.__def_params()
     
     def __def_params(self):
+        """
+        define new parameters for better readiblity of the temperature equation
+        """
         l_LL = self.params["onsager coefficient LL"]
         l_LD = self.params["onsager coefficient LD"]
         l_DD = self.params["onsager coefficient DD"]
@@ -186,6 +306,27 @@ class Electrolyte(Submodel):
         self.params["b_phi"] = b_phi
     
     def temp_function(self, x, S):
+        """
+        input function for solve_ivp()
+        S is the vector containing the temperature T and its gradient dTdx
+        returned are the derivative of T (dTdx) and of dTdx (d2Tdx2)
+        
+        splits the second order ode into a system of two first order odes
+        
+        Parameters
+        ----------
+        x : float
+            spatial vector
+        S : tuple
+            vector of the first-order ode system
+            
+        Returns
+        -------
+        list
+            derivatives of each equation
+            T    -> dTdx
+            dTdx -> d2Tdx2
+        """
         a_q = self.params["a_q"]
         a_phi = self.params["a_phi"]
         b_phi = self.params["b_phi"]
@@ -198,7 +339,7 @@ class Electrolyte(Submodel):
         
         return [dTdx, rhs]     
 #%% main
-model = LiionModel(params_LCO.parameter)  
+model = LiionModel(params_LCO)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
