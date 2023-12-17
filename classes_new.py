@@ -165,10 +165,16 @@ class LiionModel:
         self.electrolyte.vars["dcdx"] = self.electrolyte.dcdx()
         
     def __calc_J_i(self):
+        """
+        call functions to calculate Lithium flux in both electrodes
+        """
         self.anode.vars["J_L"] = self.anode.J_i()
         self.cathode.vars["J_L"] = self.cathode.J_i()
         
     def __calc_sigma(self):
+        """
+        call functions to calculate local entropy production in each domain
+        """
         self.anode.vars["sigma"] = self.anode.sigma()
         self.electrolyte.vars["sigma"] = self.electrolyte.sigma()
         self.cathode.vars["sigma"] = self.cathode.sigma()
