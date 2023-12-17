@@ -228,7 +228,7 @@ class LiionModel:
         self.__calc_sigma()
         
     
-    def plot_all(self):
+    def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
         need to make space between the plots
@@ -239,7 +239,7 @@ class LiionModel:
 
         """
 
-        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(13, 7))
+        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(13, 7), layout="constrained", dpi=200)
         for ax in (T, phi, c, Jq, sigma, sigma_ac):
             # Vertical spans 
             ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
@@ -250,12 +250,41 @@ class LiionModel:
             # add xlim
             ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
             
+            for model in [self.anode, self.electrolyte, self.cathode]:
+                T.plot(model.vars["x"]*10**6, model.vars["T"], color="r", linewidth=2)
+                phi.plot(model.vars["x"]*10**6, model.vars["phi"], color="r", linewidth=2)
+                c.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
+                Jq.plot(model.vars["x"]*10**6, model.vars["Jq"], color="r", linewidth=2)
+                sigma.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
+           
+            for model in [self.anode_sf, self.cathode_sf]:
+                T.plot(model.vars["x"]*10**6, np.ones(2)*model.vars["T"], color="r", linewidth=2)
+                sigma.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", linewidth=2, marker="*")
+            
             # add x label
             ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
-            ax.set_title("Plot")
+            
+            T.set_ylabel("T / $K$")
+            T.set_title("Temperature profile")
+            
+            phi.set_ylabel("$\phi$ / $V$")
+            phi.set_title("Potential profile")
+            
+            c.set_ylabel("c / $mol m^{-3}$")
+            c.set_title("Concentration profile")
+            
+            Jq.set_label("J'$_q$ / $W m^{-2}$")
+            Jq.set_title("Measurable heat flux")
+            
+            sigma.set_ylabel("$\sigma / Wm^{-2}K^{-1}$")
+            sigma.set_title("Local entropy production")
+            
+            y_ticks = T.get_yticks()
+            T.set_yticks(y_ticks)
+            T.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
     
     
-    def plot(self):
+    def plot_single(self):
         """
         plot properties
         """
