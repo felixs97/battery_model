@@ -163,6 +163,18 @@ class LiionModel:
         self.electrolyte.vars["dmuDdx"] = self.electrolyte.dmudx("D")
         self.electrolyte.vars["c"] = self.electrolyte.c()
         self.electrolyte.vars["dcdx"] = self.electrolyte.dcdx()
+        
+    def __calc_J_i(self):
+        self.anode.vars["J_L"] = self.anode.J_i()
+        self.cathode.vars["J_L"] = self.cathode.J_i()
+        
+    def __calc_sigma(self):
+        self.anode.vars["sigma"] = self.anode.sigma()
+        self.electrolyte.vars["sigma"] = self.electrolyte.sigma()
+        self.cathode.vars["sigma"] = self.cathode.sigma()
+        
+        self.anode_sf.vars["sigma"] = self.anode_sf.sigma(self.anode, self.electrolyte)
+        self.cathode_sf.vars["sigma"] = self.cathode_sf.sigma(self.electrolyte, self.cathode)
 
 #%%% public methods
     def init_mesh(self, nodes):
@@ -206,6 +218,36 @@ class LiionModel:
         self.__calc_Jq()
         self.__calc_phi()
         self.__calc_mu_c()
+        self.__calc_J_i()
+        self.__calc_sigma()
+        
+    
+    def plot_all(self):
+        """
+        plots Temperature, Potential, Concentration, Heat Flux and Entropy production
+        need to make space between the plots
+
+        Returns
+        -------
+        None.
+
+        """
+
+        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(13, 7))
+        for ax in (T, phi, c, Jq, sigma, sigma_ac):
+            # Vertical spans 
+            ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
+            ax.axvspan(self.cathode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6), facecolor='r', alpha=0.1)
+            ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+            ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+            
+            # add xlim
+            ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
+            
+            # add x label
+            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
+            ax.set_title("Plot")
+    
     
     def plot(self):
         """
@@ -320,6 +362,15 @@ class Surface(Submodel):
         T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
         
         return -pi_i/(T_io*F) * dT_is - pi_o/(T_oi*F) * dT_so - eta - dG/F
+    
+    def sigma(self, i, o):
+        Jq_io, Jq_oi = i.vars["Jq"][-1], o.vars["Jq"][0]
+        T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
+        dT_is, dT_so, T_s = self.vars["dT_is"], self.vars["dT_so"], self.vars["T"]
+        dphi = self.vars["dphi"]
+        dG = self.params["gibbs energy"]
+        
+        return -Jq_io/T_io * dT_is - Jq_oi/T_oi * dT_so - j/T_s*(dphi + dG/F)
 
 #%%% electrode
 class Electrode(Submodel):
@@ -437,6 +488,23 @@ class Electrode(Submodel):
         dcdx = self.vars["dcdx"]
         
         return tdf * R*T/c * dcdx
+    
+    def sigma(self):
+        """
+        calculate local entropy production
+
+        Returns
+        -------
+        sigma : np.array()
+        """
+        T      = self.vars["T"]
+        dTdx   = self.vars["T"]
+        Jq     = self.vars["Jq"]
+        J_L    = self.vars["J_L"]
+        dmudx  = self.vars["dmudx"]
+        dphidx = self.vars["dphidx"]
+        
+        return - dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j
 
 #%%% electrolyte
 class Electrolyte(Submodel):
@@ -548,7 +616,7 @@ class Electrolyte(Submodel):
         
         return -a_phi/(T*F) * dTdx - b_phi*j/F**2 * T - j/kappa
     
-    def __con_function(self, x, c):
+    def __conc_function(self, x, c):
         """
         serves as input function for ivp_solve()
         
@@ -588,7 +656,7 @@ class Electrolyte(Submodel):
         x = self.vars["x"]
         c0 = self.params["initial concentration L"]
         
-        sol = solve_ivp(self.__con_function, (x[0], x[-1]), [c0], t_eval=x)
+        sol = solve_ivp(self.__conc_function, (x[0], x[-1]), [c0], t_eval=x)
         c = sol.y[0]
         
         return c
@@ -627,6 +695,21 @@ class Electrolyte(Submodel):
         dTdx = self.vars["dTdx"]
         
         return a/T * dTdx - b*j/F * T
+    
+    def sigma(self):
+        """
+        calculate local entropy production
+
+        Returns
+        -------
+        sigma : np.array()
+        """
+        T      = self.vars["T"]
+        dTdx   = self.vars["T"]
+        Jq     = self.vars["Jq"]
+        dphidx = self.vars["dphidx"]
+        
+        return - dTdx/T**2 * Jq - dphidx/T * j
     
 #%% main
 model = LiionModel(params_LCO)  
