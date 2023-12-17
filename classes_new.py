@@ -161,7 +161,8 @@ class LiionModel:
         
         self.electrolyte.vars["dmuLdx"] = self.electrolyte.dmudx("L")
         self.electrolyte.vars["dmuDdx"] = self.electrolyte.dmudx("D")
-        self.electrolyte.vars["c"], self.electrolyte.vars["dcdx"] = self.electrolyte.c()
+        self.electrolyte.vars["c"] = self.electrolyte.c()
+        self.electrolyte.vars["dcdx"] = self.electrolyte.dcdx()
 
 #%%% public methods
     def init_mesh(self, nodes):
@@ -547,7 +548,7 @@ class Electrolyte(Submodel):
         
         return -a_phi/(T*F) * dTdx - b_phi*j/F**2 * T - j/kappa
     
-    def __dcdx(self, x, c):
+    def __con_function(self, x, c):
         """
         serves as input function for ivp_solve()
         
@@ -568,9 +569,9 @@ class Electrolyte(Submodel):
         tdf_LD = self.params["thermodynamic factor LD"]
         tdf_DL = self.params["thermodynamic factor DL"]
         
-        T = self.vars["T"]
-        dmuLdx = self.vars["dmuLdx"]
-        dmuDdx = self.vars["dmuDdx"]
+        T = np.mean(self.vars["T"])
+        dmuLdx = np.mean(self.vars["dmuLdx"])
+        dmuDdx = np.mean(self.vars["dmuDdx"])
         
         return (dmuLdx - tdf_LD/tdf_DD*dmuDdx)/(tdf_LL - tdf_LD*tdf_DL/tdf_DD) * c/(R*T)
     
@@ -585,12 +586,25 @@ class Electrolyte(Submodel):
         dcdx : np.array()
         """
         x = self.vars["x"]
-        c0 = self.params["initial concentration"]
+        c0 = self.params["initial concentration L"]
         
-        sol = solve_ivp(self.__dcdx, (x[0], x[-1]), [c0], t_eval=x)
-        c, dcdx = sol.y[0], sol.y[1]
+        sol = solve_ivp(self.__con_function, (x[0], x[-1]), [c0], t_eval=x)
+        c = sol.y[0]
         
-        return c, dcdx
+        return c
+    
+    def dcdx(self):
+        """
+        cacluates dcdx
+
+        Returns
+        -------
+        dcdx : np.array()
+        """
+        dc = np.gradient(self.vars["c"])
+        dx = np.gradient(self.vars["x"])
+        
+        return dc/dx
     
     def dmudx(self, component):
         """
