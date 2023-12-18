@@ -10,6 +10,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from params_sys import j, F, Tamb, R
 import params_LCO
@@ -174,6 +175,7 @@ class LiionModel:
     def __calc_sigma(self):
         """
         call functions to calculate local entropy production in each domain
+        and sum to get accumulated entropy production along cell
         """
         self.anode.vars["sigma"] = self.anode.sigma()
         self.electrolyte.vars["sigma"] = self.electrolyte.sigma()
@@ -181,6 +183,10 @@ class LiionModel:
         
         self.anode_sf.vars["sigma"] = self.anode_sf.sigma(self.anode, self.electrolyte)
         self.cathode_sf.vars["sigma"] = self.cathode_sf.sigma(self.electrolyte, self.cathode)
+        
+        self.anode.vars["sigma accumulated"] = np.cumsum(self.anode.vars["sigma"])
+        self.electrolyte.vars["sigma accumulated"] = np.cumsum(self.electrolyte.vars["sigma"]) + self.anode.vars["sigma accumulated"][-1] + self.anode_sf.vars["sigma"]
+        self.cathode.vars["sigma accumulated"] = np.cumsum(self.cathode.vars["sigma"])+  self.electrolyte.vars["sigma accumulated"][-1] + self.cathode_sf.vars["sigma"]
 
 #%%% public methods
     def init_mesh(self, nodes):
@@ -231,7 +237,6 @@ class LiionModel:
     def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
-        need to make space between the plots
 
         Returns
         -------
@@ -239,7 +244,7 @@ class LiionModel:
 
         """
 
-        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(13, 7), layout="constrained", dpi=200)
+        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(14, 7), layout="constrained", dpi=400)
         for ax in (T, phi, c, Jq, sigma, sigma_ac):
             # Vertical spans 
             ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
@@ -247,42 +252,75 @@ class LiionModel:
             ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
             ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
             
-            # add xlim
+            temp_data, phi_data, sigma_ac_data = {"x": np.array([]), "T": np.array([])}, {"x": np.array([]), "phi": np.array([])}, {"x": np.array([]), "sigma_ac": np.array([])}
+            
+            for model in [self.anode, self.anode_sf, self.electrolyte, self.cathode_sf, self.cathode]:
+                bulk = [self.anode, self.electrolyte, self.cathode]
+                if model in bulk:
+                    temp_data["x"]  = np.append(temp_data["x"], model.vars["x"] * 10**6)
+                    temp_data["T"]  = np.append(temp_data["T"], model.vars["T"])
+                    
+                    phi_data["x"]   = np.append(phi_data["x"], model.vars["x"] * 10**6)
+                    phi_data["phi"] = np.append(phi_data["phi"], model.vars["phi"])
+                    
+                    sigma_ac_data["x"] = np.append(sigma_ac_data["x"], model.vars["x"] * 10**6)
+                    sigma_ac_data["sigma_ac"] = np.append(sigma_ac_data["sigma_ac"], model.vars["sigma accumulated"])
+                    
+                    # plot c, Jq and sigma for each bulk phase separate
+                    Jq.plot(model.vars["x"]*10**6, model.vars["Jq"], color="r", linewidth=2)
+                    sigma.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
+                    
+                    # plot c in different color
+                    if model == self.electrolyte:
+                        c.plot(model.vars["x"]*10**6, model.vars["c"], color="b", linewidth=2)
+                    else:
+                        c.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
+                else:
+                    temp_data["x"] = np.append(temp_data["x"], model.vars["x"] * 10**6) 
+                    temp_data["T"] = np.append(temp_data["T"], np.ones(2) * model.vars["T"])
+                    
+                    # plot sigma surface as dot
+                    sigma.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", linewidth=2, marker="*")
+               
+            # T, phi and sigma accumulated are plotted as one line along whole cell
+            T.plot(temp_data["x"], temp_data["T"], color="r", linewidth=2)
+            phi.plot(phi_data["x"], phi_data["phi"], color="r", linewidth=2)
+            sigma_ac.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
+            
+            # format x-axes
+            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
             ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
             
-            for model in [self.anode, self.electrolyte, self.cathode]:
-                T.plot(model.vars["x"]*10**6, model.vars["T"], color="r", linewidth=2)
-                phi.plot(model.vars["x"]*10**6, model.vars["phi"], color="r", linewidth=2)
-                c.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
-                Jq.plot(model.vars["x"]*10**6, model.vars["Jq"], color="r", linewidth=2)
-                sigma.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
-           
-            for model in [self.anode_sf, self.cathode_sf]:
-                T.plot(model.vars["x"]*10**6, np.ones(2)*model.vars["T"], color="r", linewidth=2)
-                sigma.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", linewidth=2, marker="*")
-            
-            # add x label
-            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
-            
+            # format temperature plot
             T.set_ylabel("T / $K$")
-            T.set_title("Temperature profile")
-            
-            phi.set_ylabel("$\phi$ / $V$")
-            phi.set_title("Potential profile")
-            
-            c.set_ylabel("c / $mol m^{-3}$")
-            c.set_title("Concentration profile")
-            
-            Jq.set_label("J'$_q$ / $W m^{-2}$")
-            Jq.set_title("Measurable heat flux")
-            
-            sigma.set_ylabel("$\sigma / Wm^{-2}K^{-1}$")
-            sigma.set_title("Local entropy production")
-            
+            T.set_title("Temperature profile", fontsize=13)
             y_ticks = T.get_yticks()
             T.set_yticks(y_ticks)
             T.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
-    
+            
+            # format electric potential plot
+            phi.set_ylabel("$\phi$ / $V$")
+            phi.set_title("Potential profile", fontsize=13)
+            
+            # format concentration plot
+            c.set_ylabel("c / $mol m^{-3}$")
+            c.set_title("Concentration profile", fontsize=13)
+            lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"))
+            labels = ("Li", "LiPF$_6$")
+            c.legend(lines, labels)
+            
+            # format heatflux plot
+            Jq.set_ylabel("J'$_q$ / $W m^{-2}$")
+            Jq.set_title("Measurable heat flux", fontsize=13)
+            
+            # format local entropy plot
+            sigma.set_ylabel("$\sigma$ / $Wm^{-2}K^{-1}$")
+            sigma.set_title("Local entropy production", fontsize=13)
+            
+            # format accumulated entropy plot
+            sigma_ac.set_ylabel("$\sigma$ / $Wm^{-2}K^{-1}$")
+            sigma_ac.set_title("Accumulated entropy production", fontsize=13)
+            
     
     def plot_single(self):
         """
@@ -538,8 +576,9 @@ class Electrode(Submodel):
         J_L    = self.vars["J_L"]
         dmudx  = self.vars["dmudx"]
         dphidx = self.vars["dphidx"]
+        dx     = np.gradient(self.vars["x"])
         
-        return - dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j
+        return (- dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j)*dx
 
 #%%% electrolyte
 class Electrolyte(Submodel):
@@ -743,8 +782,9 @@ class Electrolyte(Submodel):
         dTdx   = self.vars["T"]
         Jq     = self.vars["Jq"]
         dphidx = self.vars["dphidx"]
+        dx     = np.gradient(self.vars["x"])
         
-        return - dTdx/T**2 * Jq - dphidx/T * j
+        return (- dTdx/T**2 * Jq - dphidx/T * j)*dx
     
 #%% main
 model = LiionModel(params_LCO)  

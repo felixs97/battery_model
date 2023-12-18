@@ -14,7 +14,7 @@ parameter = {
         "electric conductivity":      2204.8,                   # S/m
         "peltier coefficient":           5.74 *Tamb,            # J/mol
         "diffusion coefficient":        10    *10**(-11),       # m2/s
-        "initial concentration":     25000,                     # mol/m3
+        "initial concentration":     40000,                     # mol/m3
         "thermodynamic factor":          1                      # -
         },
     "Cathode": {
@@ -23,7 +23,7 @@ parameter = {
         "electric conductivity":        10,                     # S/m
         "peltier coefficient":          14.50 *Tamb,            # J/mol
         "diffusion coefficient":        10    *10**(-11),       # m2/s
-        "initial concentration":      25000,                    # mol/m3
+        "initial concentration":      1000,                    # mol/m3
         "thermodynamic factor":         1                       # -
         },
     "Electrolyte": {
