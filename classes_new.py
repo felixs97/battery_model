@@ -427,6 +427,20 @@ class Surface(Submodel):
         self.params["thermal conductivity"] = lambda_ / (k*L) 
         
     def dphi(self, i, o):
+        """
+        calculates potential jump accross surface
+
+        Parameters
+        ----------
+        i : object
+            instance of the bulk phase on the left-hand-side
+        o : object
+            instance of the bulk phase on the right-hand-side
+
+        Returns
+        -------
+        dphi : float
+        """
         pi_i, pi_o = i.params["peltier coefficient"], o.params["peltier coefficient"]
         eta = self.params["overpotential"]
         dG = self.params["gibbs energy"]
@@ -437,6 +451,20 @@ class Surface(Submodel):
         return -pi_i/(T_io*F) * dT_is - pi_o/(T_oi*F) * dT_so - eta - dG/F
     
     def sigma(self, i, o):
+        """
+        calculates entropy production accross surface
+
+        Parameters
+        ----------
+        i : object
+            instance of the bulk phase on the left-hand-side
+        o : object
+            instance of the bulk phase on the right-hand-side
+
+        Returns
+        -------
+        sigma : float
+        """
         Jq_io, Jq_oi = i.vars["Jq"][-1], o.vars["Jq"][0]
         T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
         dT_is, dT_so, T_s = self.vars["dT_is"], self.vars["dT_so"], self.vars["T"]
