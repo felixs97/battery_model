@@ -233,7 +233,39 @@ class LiionModel:
         self.__calc_J_i()
         self.__calc_sigma()
         
-    
+    def consistency_check(self):
+
+        Jq_ai, Jq_ao = self.anode.vars["Jq"][0], self.anode.vars["Jq"][-1]
+        T_ai, T_ao = self.anode.vars["T"][0], self.anode.vars["T"][-1]
+        J_L = self.anode.vars["J_L"]
+        S_L = 29.09
+        dJs = Jq_ao/T_ao + J_L*S_L - Jq_ai/T_ai
+        sigma_ac = np.sum(self.anode.vars["sigma"])
+        
+        print(f"Anode: Entropy fluxes difference: {dJs}")
+        print(f"Anode: Entropy prod. accumulated: {sigma_ac}")
+        print("\n")
+        
+        Jq_ai, Jq_ao = self.electrolyte.vars["Jq"][0], self.electrolyte.vars["Jq"][-1]
+        T_ai, T_ao = self.electrolyte.vars["T"][0], self.electrolyte.vars["T"][-1]
+        dJs = Jq_ao/T_ao - Jq_ai/T_ai
+        sigma_ac = np.sum(self.electrolyte.vars["sigma"])
+        
+        print(f"Electrolyte: Entropy fluxes difference: {dJs}")
+        print(f"Electrolyte: Entropy prod. accumulated: {sigma_ac}")
+        print("\n")
+        
+        Jq_ai, Jq_ao = self.cathode.vars["Jq"][0], self.cathode.vars["Jq"][-1]
+        T_ai, T_ao = self.cathode.vars["T"][0], self.cathode.vars["T"][-1]
+        J_L = self.cathode.vars["J_L"]
+        S_L = -29.09
+        dJs = Jq_ao/T_ao - J_L*S_L - Jq_ai/T_ai
+        sigma_ac = np.sum(self.cathode.vars["sigma"])
+        
+        print(f"Cathode: Entropy fluxes difference: {dJs}")
+        print(f"Cathode: Entropy prod. accumulated: {sigma_ac}")
+        
+        
     def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
@@ -571,8 +603,11 @@ class Electrode(Submodel):
         dcdx : np.array()
         """
         D = self.params["diffusion coefficient"]
-        
-        return - j/(D*F)
+        if D == 0:
+            dcdx = 0
+        else:
+            dcdx = - j/(D*F)
+        return dcdx
     
     def dmudx(self):
         """
@@ -796,7 +831,7 @@ class Electrolyte(Submodel):
         T = self.vars["T"]
         dTdx = self.vars["dTdx"]
         
-        return a/T * dTdx - b*j/F * T
+        return -a/T * dTdx + b*j/F * T
     
     def sigma(self):
         """
@@ -822,6 +857,10 @@ model.init_mesh({"Anode":       100,
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
 model.plot()
+model.consistency_check()
+
+#plt.plot(model.anode.vars["x"], model.anode.vars["c"])
+#plt.plot(model.cathode.vars["x"], model.cathode.vars["c"])
 
         
         

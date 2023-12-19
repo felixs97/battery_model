@@ -566,7 +566,7 @@ plot_profile("T", "T / $K$", "Temperature profile")
 #plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
 
 #plot_single("Jq", "J'$_q$ / $Wm^{-2}$", "Measurable Heatflux")
-#plot_single("sigma", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production", plot_sf=True)
+plot_single("sigma", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production", plot_sf=True)
 #plot_single("c", "c$_{Li}$ / $m^3 mol^{-1}$", "Concentraton Profile of Lithium")
 #%%% Plot surface temperature
 #plot_sf_temp(x, T, 'AS')
