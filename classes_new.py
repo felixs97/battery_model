@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 from params_sys import j, F, Tamb, R
-import params_LCO
+import params_LCO, params_LFP
 
 #%% cell model
 class LiionModel:
@@ -234,7 +234,10 @@ class LiionModel:
         self.__calc_sigma()
         
     def consistency_check(self):
-
+        """
+        calculate and print entropy for each phase and for whole cell in two different ways to check consistency
+        both calulations should result in the same 
+        """
         Jq_ai, Jq_ao = self.anode.vars["Jq"][0], self.anode.vars["Jq"][-1]
         T_ai, T_ao = self.anode.vars["T"][0], self.anode.vars["T"][-1]
         J_L = self.anode.vars["J_L"]
@@ -258,7 +261,7 @@ class LiionModel:
         Jq_ci, Jq_co = self.cathode.vars["Jq"][0], self.cathode.vars["Jq"][-1]
         T_ci, T_co = self.cathode.vars["T"][0], self.cathode.vars["T"][-1]
         J_L = self.cathode.vars["J_L"]
-        S_L = -29.09
+        S_L = 29.09
         dJs = Jq_co/T_co - J_L*S_L - Jq_ci/T_ci
         sigma_ac = np.sum(self.cathode.vars["sigma"])
         
@@ -270,8 +273,6 @@ class LiionModel:
         sigma_ac = self.cathode.vars["sigma accumulated"][-1]
         print(f"Whole Cell: Entropy fluxes difference: {dJs}")
         print(f"Whole Cell: Entropy prod. accumulated: {sigma_ac}")
-        
-        
         
         
     def plot(self):
@@ -858,7 +859,7 @@ class Electrolyte(Submodel):
         return (- dTdx/T**2 * Jq - dphidx/T * j)*dx
     
 #%% main
-model = LiionModel(params_LCO)  
+model = LiionModel(params_LFP)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
