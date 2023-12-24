@@ -154,7 +154,6 @@ def dSdx_sf2(i, o, sf):
     
     if sf == "AS":
         dTis = lambda_i/lambda_s * dTdx
-        Ts = dTis + T
         dTso = dTis + pi_s*j/(lambda_s*F) - eta*j/lambda_s
         dTdxoi = (lambda_s * dTso + j/F*(bq - pi_o))/(lambda_o - aq/T**2)
     else:
@@ -299,9 +298,10 @@ def sigma_bulk(layer):
     Jq     = res[layer]['Jq']
     T      = res[layer]['T']
     dTdx   = res[layer]['dTdx']
-    dphidx = np.gradient(res[layer]['phi'])
+    x      = res[layer]["x"]
+    dphidx = np.gradient(res[layer]['phi'], x)
     
-    sigma = -Jq * dTdx/(T**2) - j*dphidx/T
+    sigma = (-Jq * dTdx/(T**2) - j*dphidx/T)
     
     return sigma
 
@@ -471,8 +471,8 @@ prp['A'] = set_electrode_prp(  L       = 74 * 10**(-6),          # m
 
 prp['C'] = set_electrode_prp(  L       = 67 * 10**(-6),          # m
                                pi      = 14.5*Tamb,              # J / mol
-                               lambda_ = 2.1,#0.32,                   # W / K / m
-                               kappa   = 10)#6.75 )                  # S / m
+                               lambda_ = 0.32,                   # W / K / m
+                               kappa   = 6.75 )                  # S / m
 
 prp['E'] = set_electrolyte_prp(L       =  12 * 10**(-6),         # m
                                pi      =  24.7 * 10**3,          # J / mol
@@ -499,10 +499,10 @@ prp['AS'] = set_surface_prp(   L       =  50 * 10**(-9),         # m
 
 prp['CS'] = set_surface_prp(   L       =  10 * 10**(-9),         # m
                                lambda_ =   1.11,                 # W / K / m
-                               dPhi0   =   3.9,#3.45,                 # V
-                               j0      =   26,#1.7,                  # A / m2  
+                               dPhi0   =   3.45,                 # V
+                               j0      =   1.7,                  # A / m2  
                                k       =   110,
-                               pi      =   49000)               # J / mol
+                               pi      =   122000)               # J / mol
 
 #%% Define mesh 
 nx = [100, 20, 100]
@@ -562,10 +562,10 @@ res['C']['sigma']  = sigma_bulk('C')
 
 #%% Create Plots
 plot_profile("T", "T / $K$", "Temperature profile")
-#plot_profile("phi", "$\phi$ / $V$", "Electrical Potential Profile")
+plot_profile("phi", "$\phi$ / $V$", "Electrical Potential Profile")
 #plot_profile("sigma_accum", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production accumulated")
 
-#plot_single("Jq", "J'$_q$ / $Wm^{-2}$", "Measurable Heatflux")
+plot_single("Jq", "J'$_q$ / $Wm^{-2}$", "Measurable Heatflux")
 plot_single("sigma", "$\sigma / Wm^{-2}K^{-1}$", "Entropy Production", plot_sf=True)
 #plot_single("c", "c$_{Li}$ / $m^3 mol^{-1}$", "Concentraton Profile of Lithium")
 #%%% Plot surface temperature

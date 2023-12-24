@@ -9,6 +9,7 @@ Created on Fri Dec 15 11:19:31 2023
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
+from scipy.integrate import cumtrapz
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -57,7 +58,7 @@ class LiionModel:
         T_io = i.vars["T"][-1]
         dTdx_io = i.vars["dTdx"][-1]
         
-        if sf == "Anode Surface":
+        if sf.name == "Anode Surface":
             dT_is = lambda_i/lambda_s * dTdx_io
             dT_so = dT_is + pi_s*j/F/lambda_s - eta*j/lambda_s 
             dTdx_oi = (lambda_s * dT_so + j/F*(b_q - pi_o))/(lambda_o - a_q/T_io**2)
@@ -184,9 +185,9 @@ class LiionModel:
         self.anode_sf.vars["sigma"] = self.anode_sf.sigma(self.anode, self.electrolyte)
         self.cathode_sf.vars["sigma"] = self.cathode_sf.sigma(self.electrolyte, self.cathode)
         
-        self.anode.vars["sigma accumulated"] = np.cumsum(self.anode.vars["sigma"])
-        self.electrolyte.vars["sigma accumulated"] = np.cumsum(self.electrolyte.vars["sigma"]) + self.anode.vars["sigma accumulated"][-1] + self.anode_sf.vars["sigma"]
-        self.cathode.vars["sigma accumulated"] = np.cumsum(self.cathode.vars["sigma"])+  self.electrolyte.vars["sigma accumulated"][-1] + self.cathode_sf.vars["sigma"]
+        self.anode.vars["sigma accumulated"] = self.anode.integrate("sigma", 0)
+        self.electrolyte.vars["sigma accumulated"] = self.electrolyte.integrate("sigma", (self.anode.vars["sigma accumulated"][-1] + self.anode_sf.vars["sigma"]))
+        self.cathode.vars["sigma accumulated"] = self.cathode.integrate("sigma", (self.electrolyte.vars["sigma accumulated"][-1] + self.cathode_sf.vars["sigma"]))
 
 #%%% public methods
     def init_mesh(self, nodes):
@@ -240,10 +241,10 @@ class LiionModel:
         """
         Jq_ai, Jq_ao = self.anode.vars["Jq"][0], self.anode.vars["Jq"][-1]
         T_ai, T_ao = self.anode.vars["T"][0], self.anode.vars["T"][-1]
-        J_L = self.anode.vars["J_L"]
+        J_L = self.anode.vars["J_L"][-1]
         S_L = 29.09
         dJs = Jq_ao/T_ao + J_L*S_L - Jq_ai/T_ai
-        sigma_ac = np.sum(self.anode.vars["sigma"])
+        sigma_ac = self.anode.integrate("sigma")[-1]
         
         print(f"Anode: Entropy fluxes difference: {dJs}")
         print(f"Anode: Entropy prod. accumulated: {sigma_ac}")
@@ -252,7 +253,7 @@ class LiionModel:
         Jq_ei, Jq_eo = self.electrolyte.vars["Jq"][0], self.electrolyte.vars["Jq"][-1]
         T_ei, T_eo = self.electrolyte.vars["T"][0], self.electrolyte.vars["T"][-1]
         dJs = Jq_eo/T_eo - Jq_ei/T_ei
-        sigma_ac = np.sum(self.electrolyte.vars["sigma"])
+        sigma_ac = self.electrolyte.integrate("sigma")[-1]
         
         print(f"Electrolyte: Entropy fluxes difference: {dJs}")
         print(f"Electrolyte: Entropy prod. accumulated: {sigma_ac}")
@@ -260,16 +261,16 @@ class LiionModel:
         
         Jq_ci, Jq_co = self.cathode.vars["Jq"][0], self.cathode.vars["Jq"][-1]
         T_ci, T_co = self.cathode.vars["T"][0], self.cathode.vars["T"][-1]
-        J_L = self.cathode.vars["J_L"]
+        J_L = self.cathode.vars["J_L"][0]
         S_L = 29.09
         dJs = Jq_co/T_co - J_L*S_L - Jq_ci/T_ci
-        sigma_ac = np.sum(self.cathode.vars["sigma"])
+        sigma_ac = self.cathode.integrate("sigma")[-1]
         
         print(f"Cathode: Entropy fluxes difference: {dJs}")
         print(f"Cathode: Entropy prod. accumulated: {sigma_ac}")
         print("\n")
         
-        dJs = Jq_co/T_co - Jq_ai/T_ai
+        dJs = abs(Jq_ai + Jq_co)/Tamb
         sigma_ac = self.cathode.vars["sigma accumulated"][-1]
         print(f"Whole Cell: Entropy fluxes difference: {dJs}")
         print(f"Whole Cell: Entropy prod. accumulated: {sigma_ac}")
@@ -319,9 +320,6 @@ class LiionModel:
                 else:
                     temp_data["x"] = np.append(temp_data["x"], model.vars["x"] * 10**6) 
                     temp_data["T"] = np.append(temp_data["T"], np.ones(2) * model.vars["T"])
-                    
-                    # plot sigma surface as dot
-                    sigma.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", linewidth=2, marker="*")
                
             # T, phi and sigma accumulated are plotted as one line along whole cell
             T.plot(temp_data["x"], temp_data["T"], color="r", linewidth=2)
@@ -355,7 +353,7 @@ class LiionModel:
             Jq.set_title("Measurable heat flux", fontsize=13)
             
             # format local entropy plot
-            sigma.set_ylabel("$\sigma$ / $Wm^{-2}K^{-1}$")
+            sigma.set_ylabel("$\sigma$ / $Wm^{-3}K^{-1}$")
             sigma.set_title("Local entropy production", fontsize=13)
             
             # format accumulated entropy plot
@@ -428,9 +426,8 @@ class Submodel:
         y : float
             integrated value y
         """
-        dx = np.gradient(self.vars["x"])
         
-        return np.cumsum(self.vars[dydx]*dx) + y0
+        return cumtrapz(self.vars[dydx], self.vars["x"], initial=0)  + y0
 #%%% surface    
 class Surface(Submodel):
     def __init__(self, params, name):
@@ -601,7 +598,7 @@ class Electrode(Submodel):
         T = self.vars["T"]
         dTdx = self.vars["dTdx"]
         
-        return pi/F * dTdx/T + j/kappa
+        return -pi/F * dTdx/T - j/kappa
     
     def dcdx(self):
         """
@@ -612,10 +609,11 @@ class Electrode(Submodel):
         dcdx : np.array()
         """
         D = self.params["diffusion coefficient"]
+        size = len(self.vars["x"])
         if D == 0:
-            dcdx = 0
+            dcdx = np.zeros(size)
         else:
-            dcdx = - j/(D*F)
+            dcdx = - j/(D*F) * np.ones(size)
         return dcdx
     
     def dmudx(self):
@@ -648,9 +646,8 @@ class Electrode(Submodel):
         J_L    = self.vars["J_L"]
         dmudx  = self.vars["dmudx"]
         dphidx = self.vars["dphidx"]
-        dx     = np.gradient(self.vars["x"])
         
-        return (- dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j)*dx
+        return - dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j
 
 #%%% electrolyte
 class Electrolyte(Submodel):
@@ -854,12 +851,11 @@ class Electrolyte(Submodel):
         dTdx   = self.vars["T"]
         Jq     = self.vars["Jq"]
         dphidx = self.vars["dphidx"]
-        dx     = np.gradient(self.vars["x"])
         
-        return (- dTdx/T**2 * Jq - dphidx/T * j)*dx
+        return - dTdx/T**2 * Jq - dphidx/T * j
     
 #%% main
-model = LiionModel(params_LFP)  
+model = LiionModel(params_LFP, mass_trans = False)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 

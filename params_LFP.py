@@ -11,10 +11,10 @@ parameter = {
     "Anode": {
         "length":                       74    *10**(-6),        # m
         "thermal conductivity":          1.11,                  # W/m/K
-        "electric conductivity":      2204.8,                   # S/m
+        "electric conductivity":      2203.8,                   # S/m
         "peltier coefficient":           5.74 *Tamb,            # J/mol
         "diffusion coefficient":        10    *10**(-11),       # m2/s
-        "initial concentration":     25000,                     # mol/m3
+        "initial concentration":     28000,                     # mol/m3
         "thermodynamic factor":          1.5                    # -
         },
     "Cathode": {
@@ -22,8 +22,8 @@ parameter = {
         "thermal conductivity":          0.32,                  # W/m/K
         "electric conductivity":        6.75,                   # S/m
         "peltier coefficient":          14.50 *Tamb,            # J/mol
-        "diffusion coefficient":        10    *10**(-12),       # m2/s
-        "initial concentration":       5000,                     # mol/m3
+        "diffusion coefficient":        10    *10**(-11),       # m2/s
+        "initial concentration":       1000,                     # mol/m3
         "thermodynamic factor":         10                      # -
         },
     "Electrolyte": {
