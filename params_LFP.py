@@ -24,7 +24,7 @@ parameter = {
         "peltier coefficient":          14.50 *Tamb,            # J/mol
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":       1000,                     # mol/m3
-        "thermodynamic factor":         10                      # -
+        "thermodynamic factor":         0.01                      # -
         },
     "Electrolyte": {
         "length":                       12    *10**(-6),        # m

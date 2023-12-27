@@ -189,6 +189,13 @@ class LiionModel:
         self.electrolyte.vars["sigma accumulated"] = self.electrolyte.integrate("sigma", (self.anode.vars["sigma accumulated"][-1] + self.anode_sf.vars["sigma"]))
         self.cathode.vars["sigma accumulated"] = self.cathode.integrate("sigma", (self.electrolyte.vars["sigma accumulated"][-1] + self.cathode_sf.vars["sigma"]))
 
+    def __calc_Js(self):
+        self.anode.vars["Js"] = self.anode.Js()
+        self. electrolyte.vars["Js"] = self.electrolyte.Js()
+        self.cathode.vars["Js"] = self.cathode.Js()
+        
+        self.anode_sf.vars["dJs"] = self.anode_sf.dJs(self.anode, self.electrolyte)
+        self.cathode_sf.vars["dJs"] = self.cathode_sf.dJs(self.electrolyte, self.cathode)
 #%%% public methods
     def init_mesh(self, nodes):
         """
@@ -233,6 +240,7 @@ class LiionModel:
         self.__calc_mu_c()
         self.__calc_J_i()
         self.__calc_sigma()
+        self.__calc_Js()
         
     def consistency_check(self):
         """
@@ -271,7 +279,36 @@ class LiionModel:
         print(f"| Electrolyte     |     {dJs_e:.6f}     |      {sigma_e:.6f}      |  ")
         print(f"| Cathode Surface |    {dJs_cs:.6f}     |      {sigma_cs:.6f}      |  ")
         print(f"| Cathode         |    {dJs_c:.6f}     |      {sigma_c:.6f}      |  ")
-
+        
+        
+        fig, (bulk, surface) = plt.subplots(1,2, figsize=(10, 4), layout="constrained", dpi=400)
+        
+        # Vertical spans 
+        for ax in (bulk, surface):
+            ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
+            ax.axvspan(self.cathode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6), facecolor='r', alpha=0.1)
+            ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+            ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
+            
+            ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
+            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
+            
+        for model in [self.anode, self.electrolyte, self.cathode]:
+            bulk.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
+            bulk.plot(model.vars["x"]*10**6, np.gradient(model.vars["Js"], model.vars["x"]), color="b", linewidth=2, linestyle="--")
+        
+        for model in [self.anode_sf, self.cathode_sf]:
+            surface.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", marker="*", markersize=10)
+            surface.plot(np.mean(model.vars["x"])*10**6, model.vars["dJs"], color="b", marker="*", markersize=10)
+        
+        bulk.set_title("Bulk phases", fontsize=14)
+        surface.set_title("Surfaces", fontsize=14)
+        
+        bulk.set_ylabel("$\Delta S^{irr}$ / $Wm^{-3}K^{-1}$", fontsize=12)
+        surface.set_ylabel("$\Delta S^{irr}$ / $Wm^{-2}K^{-1}$", fontsize=12)
+        surface.set_xlim(60, 100)
+        
+        
         
     def plot(self):
         """
@@ -508,6 +545,29 @@ class Surface(Submodel):
         
         return -Jq_io/T_io * dT_is - Jq_oi/T_oi * dT_so - j/T_s*(dphi + dG/F)
 
+    def dJs(self, i, o):
+        """
+        calculates difference in entropy flux across surface
+
+        Parameters
+        ----------
+        i : object
+            instance of the bulk phase on the left-hand-side
+        o : object
+            instance of the bulk phase on the right-hand-side
+
+        Returns
+        -------
+        sigma : float
+        """
+        Jq_io, Jq_oi = i.vars["Jq"][-1], o.vars["Jq"][0]
+        T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
+        S_L = 29.09
+        
+        if self.name == "Anode Surface":
+            return Jq_oi/T_oi - Jq_io/T_io - j/F * S_L
+        else:
+            return Jq_oi/T_oi + j/F * S_L - Jq_io/T_io
 #%%% electrode
 class Electrode(Submodel):
     def __init__(self, params, name, mass_trans):
@@ -646,6 +706,20 @@ class Electrode(Submodel):
         
         return - dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j
 
+    def Js(self):
+        """
+        caculate entropy flux
+
+        Returns
+        -------
+        Js : np.array()
+        """
+        T      = self.vars["T"]
+        Jq     = self.vars["Jq"]
+        J_L    = self.vars["J_L"]
+        S_L    = 29.09
+        
+        return Jq/T + J_L*S_L
 #%%% electrolyte
 class Electrolyte(Submodel):
     def __init__(self, params, name, mass_trans):
@@ -853,6 +927,18 @@ class Electrolyte(Submodel):
         
         return - dTdx/T**2 * Jq - dphidx/T * j
     
+    def Js(self):
+        """
+        caculate entropy flux
+
+        Returns
+        -------
+        Js : np.array()
+        """
+        T      = self.vars["T"]
+        Jq     = self.vars["Jq"]
+        
+        return Jq/T 
 #%% main
 model = LiionModel(params_LFP, mass_trans = True)  
 model.init_mesh({"Anode":       100, 
@@ -861,8 +947,9 @@ model.init_mesh({"Anode":       100,
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
 #model.plot()
+
 model.consistency_check()
-model.plot()
+
 #plt.plot(model.anode.vars["x"], model.anode.vars["c"])
 #plt.plot(model.cathode.vars["x"], model.cathode.vars["c"])
 
