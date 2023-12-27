@@ -239,42 +239,39 @@ class LiionModel:
         calculate and print entropy for each phase and for whole cell in two different ways to check consistency
         both calulations should result in the same 
         """
-        Jq_ai, Jq_ao = self.anode.vars["Jq"][0], self.anode.vars["Jq"][-1]
-        T_ai, T_ao = self.anode.vars["T"][0], self.anode.vars["T"][-1]
-        J_L = self.anode.vars["J_L"][-1]
+
         S_L = 29.09
-        dJs = Jq_ao/T_ao + J_L*S_L - Jq_ai/T_ai
-        sigma_ac = self.anode.integrate("sigma")[-1]
         
-        print(f"Anode: Entropy fluxes difference: {dJs}")
-        print(f"Anode: Entropy prod. accumulated: {sigma_ac}")
+        Js_ai, Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0], self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_L
+        Js_ci, Js_co = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_L, self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] 
+        Js_ei, Js_eo = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0], self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
+
+        dJs_a, sigma_a = Js_ao - Js_ai, self.anode.integrate("sigma")[-1]
+        dJs_e, sigma_e = Js_eo - Js_ei, self.electrolyte.integrate("sigma")[-1]
+        dJs_c, sigma_c = Js_co - Js_ci, self.cathode.integrate("sigma")[-1]
+        
+        dJs_as, sigma_as = Js_ei - Js_ao, self.anode_sf.vars["sigma"]
+        dJs_cs, sigma_cs = Js_ci - Js_eo, self.cathode_sf.vars["sigma"]
+
+        
+        dJs, sigma = Js_co - Js_ai, self.cathode.vars["sigma accumulated"][-1]
+        print("************* Consistency Check: Whole Cell  ************** \n")
+        
+        print(f"Entropy fluxes difference:      {dJs:.6f} W/m2/K")
+        print(f"Entropy production accumulated:  {sigma:.6f}  W/m2/K")
         print("\n")
         
-        Jq_ei, Jq_eo = self.electrolyte.vars["Jq"][0], self.electrolyte.vars["Jq"][-1]
-        T_ei, T_eo = self.electrolyte.vars["T"][0], self.electrolyte.vars["T"][-1]
-        dJs = Jq_eo/T_eo - Jq_ei/T_ei
-        sigma_ac = self.electrolyte.integrate("sigma")[-1]
-        
-        print(f"Electrolyte: Entropy fluxes difference: {dJs}")
-        print(f"Electrolyte: Entropy prod. accumulated: {sigma_ac}")
-        print("\n")
-        
-        Jq_ci, Jq_co = self.cathode.vars["Jq"][0], self.cathode.vars["Jq"][-1]
-        T_ci, T_co = self.cathode.vars["T"][0], self.cathode.vars["T"][-1]
-        J_L = self.cathode.vars["J_L"][0]
-        S_L = 29.09
-        dJs = Jq_co/T_co - J_L*S_L - Jq_ci/T_ci
-        sigma_ac = self.cathode.integrate("sigma")[-1]
-        
-        print(f"Cathode: Entropy fluxes difference: {dJs}")
-        print(f"Cathode: Entropy prod. accumulated: {sigma_ac}")
-        print("\n")
-        
-        dJs = abs(Jq_ai + Jq_co)/Tamb
-        sigma_ac = self.cathode.vars["sigma accumulated"][-1]
-        print(f"Whole Cell: Entropy fluxes difference: {dJs}")
-        print(f"Whole Cell: Entropy prod. accumulated: {sigma_ac}")
-        
+        print("***************** Investigate Subsystems ****************** \n")
+        print(f"| Subsystem       |  Entropy fluxes  | Entropy production |  ")
+        print(f"|                 |   differences    |    accumulated     |  ")
+        print(f"|                 |     W/m2/K       |       W/m2/K       |  ")
+        print(f"|---------------------------------------------------------| ")
+        print(f"| Anode           |     {dJs_a:.6f}     |      {sigma_a:.6f}      | ")
+        print(f"| Anode Surface   |     {dJs_as:.6f}     |      {sigma_as:.6f}      |  ")
+        print(f"| Electrolyte     |     {dJs_e:.6f}     |      {sigma_e:.6f}      |  ")
+        print(f"| Cathode Surface |    {dJs_cs:.6f}     |      {sigma_cs:.6f}      |  ")
+        print(f"| Cathode         |    {dJs_c:.6f}     |      {sigma_c:.6f}      |  ")
+
         
     def plot(self):
         """
@@ -311,7 +308,7 @@ class LiionModel:
                     # plot c, Jq and sigma for each bulk phase separate
                     Jq.plot(model.vars["x"]*10**6, model.vars["Jq"], color="r", linewidth=2)
                     sigma.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
-                    
+                    #sigma.plot(model.vars["x"]*10**6, model.vars["dJsdx"], color="b", linewidth=2, linestyle = "--")
                     # plot c in different color
                     if model == self.electrolyte:
                         c.plot(model.vars["x"]*10**6, model.vars["c"], color="b", linewidth=2)
@@ -653,7 +650,9 @@ class Electrode(Submodel):
 class Electrolyte(Submodel):
     def __init__(self, params, name, mass_trans):
         super().__init__(params, name, mass_trans)
+        self.mass_trans = True
         self.__def_params()
+        
     
     def __def_params(self):
         """
@@ -855,15 +854,15 @@ class Electrolyte(Submodel):
         return - dTdx/T**2 * Jq - dphidx/T * j
     
 #%% main
-model = LiionModel(params_LFP, mass_trans = False)  
+model = LiionModel(params_LFP, mass_trans = True)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
-model.plot()
+#model.plot()
 model.consistency_check()
-
+model.plot()
 #plt.plot(model.anode.vars["x"], model.anode.vars["c"])
 #plt.plot(model.cathode.vars["x"], model.cathode.vars["c"])
 
