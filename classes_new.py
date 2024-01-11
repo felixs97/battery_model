@@ -19,8 +19,9 @@ import params_LCO, params_LFP
 #%% cell model
 class LiionModel:
 #%%% private methods
-    def __init__(self, param_set, mass_trans = True):
+    def __init__(self, name, param_set, mass_trans = True):
         self.parameter = param_set.parameter
+        self.name = name
         self.mass_trans = mass_trans
         self.__add_submodels()
 
@@ -88,7 +89,7 @@ class LiionModel:
         """
         S0 = (T0, dTdx0)
         x = bulk.vars["x"]
-        sol = solve_ivp(bulk.temp_function, (x[0], x[-1]), S0, t_eval=x)
+        sol = solve_ivp(bulk.temp_function, (x[0], x[-1]), S0, t_eval=x, rtol=10**(-9), atol=10**(-9))
         bulk.vars["T"], bulk.vars["dTdx"] = sol.y
         
     def __solve_temp_system(self, dTdx_guess):
@@ -248,66 +249,54 @@ class LiionModel:
         both calulations should result in the same 
         """
 
-        S_L = 29.09
+        #S_L_a = 29.09
+        #S_L_c = 29.09
         
-        Js_ai, Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0], self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_L
-        Js_ci, Js_co = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_L, self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] 
-        Js_ei, Js_eo = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0], self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
+        mu_anode = self.anode.integrate("dmudx")
+        dmudT_anode = np.gradient(mu_anode, self.anode.vars["T"])
+        print(dmudT_anode[0])
+        dmudT_anode = self.anode.vars["dmudx"]/self.anode.vars["dTdx"]
+        print(dmudT_anode[0])
+        
+        S_L_a = -dmudT_anode[0]
+        
+        mu_cathode = self.cathode.integrate("dmudx")
+        dmudT_cathode = np.gradient(mu_cathode, self.cathode.vars["T"])
+        S_L_c = -dmudT_cathode[-1]
+        
+        Js_ao, Js_ae = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_L_a , self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_L_a
+        Js_ce, Js_co = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_L_c, self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_L_c
+        Js_ea, Js_ec = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0], self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
 
-        dJs_a, sigma_a = Js_ao - Js_ai, self.anode.integrate("sigma")[-1]
-        dJs_e, sigma_e = Js_eo - Js_ei, self.electrolyte.integrate("sigma")[-1]
-        dJs_c, sigma_c = Js_co - Js_ci, self.cathode.integrate("sigma")[-1]
+        dJs_a, sigma_a = Js_ae - Js_ao, self.anode.integrate("sigma")[-1]
+        dJs_e, sigma_e = Js_ec - Js_ea, self.electrolyte.integrate("sigma")[-1]
+        dJs_c, sigma_c = Js_co - Js_ce, self.cathode.integrate("sigma")[-1]
         
-        dJs_as, sigma_as = Js_ei - Js_ao, self.anode_sf.vars["sigma"]
-        dJs_cs, sigma_cs = Js_ci - Js_eo, self.cathode_sf.vars["sigma"]
+        dJs_as, sigma_as = Js_ea - Js_ae, self.anode_sf.vars["sigma"]
+        dJs_cs, sigma_cs = Js_ce - Js_ec, self.cathode_sf.vars["sigma"]
+        
+        lambda_c, lambda_a = self.cathode.params["thermal conductivity"], self.anode.params["thermal conductivity"]
+        dTdx_c, dTdx_a = self.cathode.vars["dTdx"][-1], self.anode.vars["dTdx"][0]
+        dJs = 1/Tamb*(lambda_c*dTdx_c - lambda_a*dTdx_a)
 
         
-        dJs, sigma = Js_co - Js_ai, self.cathode.vars["sigma accumulated"][-1]
-        print("************* Consistency Check: Whole Cell  ************** \n")
+        dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
+        print("*************** Consistency Check ***************\n")
         
-        print(f"Entropy fluxes difference:      {dJs:.6f} W/m2/K")
-        print(f"Entropy production accumulated:  {sigma:.6f}  W/m2/K")
+        print(f"Entropy fluxes difference:       {dJs:.6f} W/m2/K")
+        print(f"Entropy production accumulated:  {sigma:.6f} W/m2/K")
         print("\n")
         
-        print("***************** Investigate Subsystems ****************** \n")
-        print(f"| Subsystem       |  Entropy fluxes  | Entropy production |  ")
-        print(f"|                 |   differences    |    accumulated     |  ")
-        print(f"|                 |     W/m2/K       |       W/m2/K       |  ")
-        print(f"|---------------------------------------------------------| ")
-        print(f"| Anode           |     {dJs_a:.6f}     |      {sigma_a:.6f}      | ")
-        print(f"| Anode Surface   |     {dJs_as:.6f}     |      {sigma_as:.6f}      |  ")
-        print(f"| Electrolyte     |     {dJs_e:.6f}     |      {sigma_e:.6f}      |  ")
-        print(f"| Cathode Surface |    {dJs_cs:.6f}     |      {sigma_cs:.6f}      |  ")
-        print(f"| Cathode         |    {dJs_c:.6f}     |      {sigma_c:.6f}      |  ")
-        
-        
-        fig, (bulk, surface) = plt.subplots(1,2, figsize=(10, 4), layout="constrained", dpi=400)
-        
-        # Vertical spans 
-        for ax in (bulk, surface):
-            ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
-            ax.axvspan(self.cathode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6), facecolor='r', alpha=0.1)
-            ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
-            ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
-            
-            ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
-            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
-            
-        for model in [self.anode, self.electrolyte, self.cathode]:
-            bulk.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
-            bulk.plot(model.vars["x"]*10**6, np.gradient(model.vars["Js"], model.vars["x"]), color="b", linewidth=2, linestyle="--")
-        
-        for model in [self.anode_sf, self.cathode_sf]:
-            surface.plot(np.mean(model.vars["x"])*10**6, model.vars["sigma"], color="r", marker="*", markersize=10)
-            surface.plot(np.mean(model.vars["x"])*10**6, model.vars["dJs"], color="b", marker="*", markersize=10)
-        
-        bulk.set_title("Bulk phases", fontsize=14)
-        surface.set_title("Surfaces", fontsize=14)
-        
-        bulk.set_ylabel("$\Delta S^{irr}$ / $Wm^{-3}K^{-1}$", fontsize=12)
-        surface.set_ylabel("$\Delta S^{irr}$ / $Wm^{-2}K^{-1}$", fontsize=12)
-        surface.set_xlim(60, 100)
-        
+       # print("***************** Investigate Subsystems ****************** \n")
+       # print("| Subsystem       |  Entropy fluxes  | Entropy production |  ")
+       # print("|                 |   differences    |    accumulated     |  ")
+       # print("|                 |     W/m2/K       |       W/m2/K       |  ")
+       # print("|---------------------------------------------------------| ")
+       # print(f"| Anode           | {dJs_a} | {sigma_a} | ")
+       # print(f"| Anode Surface   | {dJs_as} | {sigma_as} |  ")
+       # print(f"| Electrolyte     | {dJs_e} | {sigma_e} |  ")
+       # print(f"| Cathode Surface | {dJs_cs} | {sigma_cs} |  ")
+       # print(f"| Cathode         | {dJs_c} | {sigma_c} |  ")
         
         
     def plot(self):
@@ -361,37 +350,37 @@ class LiionModel:
             sigma_ac.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
             
             # format x-axes
-            ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
+            ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
             ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
             
             # format temperature plot
-            T.set_ylabel("T / $K$")
+            T.set_ylabel("$T$ / K")
             T.set_title("Temperature profile", fontsize=13)
             y_ticks = T.get_yticks()
             T.set_yticks(y_ticks)
             T.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
             
             # format electric potential plot
-            phi.set_ylabel("$\phi$ / $V$")
+            phi.set_ylabel("$\phi$ / V")
             phi.set_title("Potential profile", fontsize=13)
             
             # format concentration plot
-            c.set_ylabel("c / $mol m^{-3}$")
+            c.set_ylabel("$c$ / mol m$^{-3}$")
             c.set_title("Concentration profile", fontsize=13)
             lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"))
             labels = ("Li", "LiPF$_6$")
             c.legend(lines, labels)
             
             # format heatflux plot
-            Jq.set_ylabel("J'$_q$ / $W m^{-2}$")
+            Jq.set_ylabel("$J'_q$ / W m$^{-2}$")
             Jq.set_title("Measurable heat flux", fontsize=13)
             
             # format local entropy plot
-            sigma.set_ylabel("$\sigma$ / $Wm^{-3}K^{-1}$")
+            sigma.set_ylabel("$\sigma$ / W m$^{-3}$ K$^{-1}$")
             sigma.set_title("Local entropy production", fontsize=13)
             
             # format accumulated entropy plot
-            sigma_ac.set_ylabel("$\sigma$ / $Wm^{-2}K^{-1}$")
+            sigma_ac.set_ylabel("$\sigma$ / W m$^{-2}$ K$^{-1}$")
             sigma_ac.set_title("Accumulated entropy production", fontsize=13)
             
     
@@ -423,7 +412,9 @@ class LiionModel:
         ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
         ax.set_ylabel("Temperature / K", fontsize=12)
     
-
+        
+        
+        
 #%% submodel
 class Submodel:
     def  __init__(self, model, name, mass_trans = True):
@@ -940,15 +931,17 @@ class Electrolyte(Submodel):
         
         return Jq/T 
 #%% main
-model = LiionModel(params_LFP, mass_trans = True)  
+model = LiionModel("model", params_LFP, mass_trans = False)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
-#model.plot()
+model.plot()
+#model.plot_single()
 
 model.consistency_check()
+
 
 #plt.plot(model.anode.vars["x"], model.anode.vars["c"])
 #plt.plot(model.cathode.vars["x"], model.cathode.vars["c"])
