@@ -241,7 +241,6 @@ class LiionModel:
         self.__calc_mu_c()
         self.__calc_J_i()
         self.__calc_sigma()
-        self.__calc_Js()
         
     def consistency_check(self):
         """
@@ -252,17 +251,15 @@ class LiionModel:
         #S_L_a = 29.09
         #S_L_c = 29.09
         
-        mu_anode = self.anode.integrate("dmudx")
-        dmudT_anode = np.gradient(mu_anode, self.anode.vars["T"])
-        print(dmudT_anode[0])
+
         dmudT_anode = self.anode.vars["dmudx"]/self.anode.vars["dTdx"]
-        print(dmudT_anode[0])
         
         S_L_a = -dmudT_anode[0]
-        
-        mu_cathode = self.cathode.integrate("dmudx")
-        dmudT_cathode = np.gradient(mu_cathode, self.cathode.vars["T"])
+        print(S_L_a)
+
+        dmudT_cathode = self.cathode.vars["dmudx"]/self.cathode.vars["dTdx"]
         S_L_c = -dmudT_cathode[-1]
+        print(S_L_c)
         
         Js_ao, Js_ae = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_L_a , self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_L_a
         Js_ce, Js_co = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_L_c, self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_L_c
