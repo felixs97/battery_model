@@ -190,13 +190,6 @@ class LiionModel:
         self.electrolyte.vars["sigma accumulated"] = self.electrolyte.integrate("sigma", (self.anode.vars["sigma accumulated"][-1] + self.anode_sf.vars["sigma"]))
         self.cathode.vars["sigma accumulated"] = self.cathode.integrate("sigma", (self.electrolyte.vars["sigma accumulated"][-1] + self.cathode_sf.vars["sigma"]))
 
-    def __calc_Js(self):
-        self.anode.vars["Js"] = self.anode.Js()
-        self. electrolyte.vars["Js"] = self.electrolyte.Js()
-        self.cathode.vars["Js"] = self.cathode.Js()
-        
-        self.anode_sf.vars["dJs"] = self.anode_sf.dJs(self.anode, self.electrolyte)
-        self.cathode_sf.vars["dJs"] = self.cathode_sf.dJs(self.electrolyte, self.cathode)
 #%%% public methods
     def init_mesh(self, nodes):
         """
@@ -250,7 +243,6 @@ class LiionModel:
 
         #S_L_a = 29.09
         #S_L_c = 29.09
-        
 
         dmudT_anode = self.anode.vars["dmudx"]/self.anode.vars["dTdx"]
         
@@ -274,7 +266,6 @@ class LiionModel:
         
         lambda_c, lambda_a = self.cathode.params["thermal conductivity"], self.anode.params["thermal conductivity"]
         dTdx_c, dTdx_a = self.cathode.vars["dTdx"][-1], self.anode.vars["dTdx"][0]
-        dJs = 1/Tamb*(lambda_c*dTdx_c - lambda_a*dTdx_a)
 
         
         dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
@@ -928,20 +919,7 @@ class Electrolyte(Submodel):
         
         return Jq/T 
 #%% main
-model = LiionModel("model", params_LFP, mass_trans = False)  
-model.init_mesh({"Anode":       100, 
-                 "Electrolyte":  20,
-                 "Cathode":     100}) 
-model.boundary_conditions(Tamb, Tamb)
-model.solve()
-model.plot()
-#model.plot_single()
 
-model.consistency_check()
-
-
-#plt.plot(model.anode.vars["x"], model.anode.vars["c"])
-#plt.plot(model.cathode.vars["x"], model.cathode.vars["c"])
 
         
         

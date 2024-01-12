@@ -7,15 +7,13 @@ Created on Wed Dec 13 09:14:36 2023
 """
 from params_sys import Tamb
 import params_LFP 
-import classes as c
+import classes_new as c
 
-model = c.LiionModel(params_LFP)  
+model = c.LiionModel("LFP", params_LFP, mass_trans = True)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
 model.plot()
-
-
 model.consistency_check()
