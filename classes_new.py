@@ -247,45 +247,21 @@ class LiionModel:
         dmudT_anode = self.anode.vars["dmudx"]/self.anode.vars["dTdx"]
         
         S_L_a = -dmudT_anode[0]
-        print(S_L_a)
+        #print(S_L_a)
 
         dmudT_cathode = self.cathode.vars["dmudx"]/self.cathode.vars["dTdx"]
         S_L_c = -dmudT_cathode[-1]
-        print(S_L_c)
+        #print(S_L_c)
         
-        Js_ao, Js_ae = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_L_a , self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_L_a
-        Js_ce, Js_co = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_L_c, self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_L_c
-        Js_ea, Js_ec = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0], self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
-
-        dJs_a, sigma_a = Js_ae - Js_ao, self.anode.integrate("sigma")[-1]
-        dJs_e, sigma_e = Js_ec - Js_ea, self.electrolyte.integrate("sigma")[-1]
-        dJs_c, sigma_c = Js_co - Js_ce, self.cathode.integrate("sigma")[-1]
-        
-        dJs_as, sigma_as = Js_ea - Js_ae, self.anode_sf.vars["sigma"]
-        dJs_cs, sigma_cs = Js_ce - Js_ec, self.cathode_sf.vars["sigma"]
-        
-        lambda_c, lambda_a = self.cathode.params["thermal conductivity"], self.anode.params["thermal conductivity"]
-        dTdx_c, dTdx_a = self.cathode.vars["dTdx"][-1], self.anode.vars["dTdx"][0]
-
-        
+        Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_L_a 
+        Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_L_c
+    
         dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
         print("*************** Consistency Check ***************\n")
         
         print(f"Entropy fluxes difference:       {dJs:.6f} W/m2/K")
         print(f"Entropy production accumulated:  {sigma:.6f} W/m2/K")
         print("\n")
-        
-       # print("***************** Investigate Subsystems ****************** \n")
-       # print("| Subsystem       |  Entropy fluxes  | Entropy production |  ")
-       # print("|                 |   differences    |    accumulated     |  ")
-       # print("|                 |     W/m2/K       |       W/m2/K       |  ")
-       # print("|---------------------------------------------------------| ")
-       # print(f"| Anode           | {dJs_a} | {sigma_a} | ")
-       # print(f"| Anode Surface   | {dJs_as} | {sigma_as} |  ")
-       # print(f"| Electrolyte     | {dJs_e} | {sigma_e} |  ")
-       # print(f"| Cathode Surface | {dJs_cs} | {sigma_cs} |  ")
-       # print(f"| Cathode         | {dJs_c} | {sigma_c} |  ")
-        
         
     def plot(self):
         """
