@@ -241,26 +241,17 @@ class LiionModel:
         both calulations should result in the same 
         """
 
-        #S_L_a = 29.09
-        #S_L_c = 29.09
-
-        dmudT_anode = self.anode.vars["dmudx"]/self.anode.vars["dTdx"]
+        S_La = 29.09
+        S_Lc = 29.09
         
-        S_L_a = -dmudT_anode[0]
-        #print(S_L_a)
-
-        dmudT_cathode = self.cathode.vars["dmudx"]/self.cathode.vars["dTdx"]
-        S_L_c = -dmudT_cathode[-1]
-        #print(S_L_c)
-        
-        Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_L_a 
-        Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_L_c
+        Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_La 
+        Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_Lc
     
         dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
         print("*************** Consistency Check ***************\n")
         
-        print(f"Entropy fluxes difference:       {dJs:.6f} W/m2/K")
-        print(f"Entropy production accumulated:  {sigma:.6f} W/m2/K")
+        print(f"Entropy fluxes difference:       {dJs:.8f} W/m2/K")
+        print(f"Entropy production accumulated:  {sigma:.8f} W/m2/K")
         print("\n")
         
     def plot(self):
@@ -348,37 +339,105 @@ class LiionModel:
             sigma_ac.set_title("Accumulated entropy production", fontsize=13)
             
     
-    def plot_single(self):
+    def plot_single(self, quantity):
         """
-        plot properties
+        plot a single selected quantity
+        possible quantities: T, phi, c, Jq, sigma, sigma accumulated
+
+        Parameters
+        ----------
+        quantity : string
+            quantity to plot, select from list above
         """
-        fig, ax = plt.subplots(dpi=200)
-        
+        fig, ax = plt.subplots(figsize=(6, 4), dpi=200)
+
         # Vertical spans 
         ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
         ax.axvspan(self.cathode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6), facecolor='r', alpha=0.1)
         ax.axvspan(self.anode_sf.vars["x"][0]*10**(6), self.anode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
         ax.axvspan(self.cathode_sf.vars["x"][0]*10**(6), self.cathode_sf.vars["x"][-1]*10**(6), facecolor='k', alpha=0.3)
         
-        for model in [self.anode, self.electrolyte, self.cathode]:
-            ax.plot(model.vars["x"]*10**6, model.vars["T"], color="r", linewidth=2)
+        temp_data, phi_data, sigma_ac_data = {"x": np.array([]), "T": np.array([])}, {"x": np.array([]), "phi": np.array([])}, {"x": np.array([]), "sigma_ac": np.array([])}
         
-        for model in [self.anode_sf, self.cathode_sf]:
-            ax.plot(model.vars["x"]*10**6, np.ones(2)*model.vars["T"], color="r", linewidth=2)
+        for model in [self.anode, self.anode_sf, self.electrolyte, self.cathode_sf, self.cathode]:
+            bulk = [self.anode, self.electrolyte, self.cathode]
+            if model in bulk:
+                temp_data["x"]  = np.append(temp_data["x"], model.vars["x"] * 10**6)
+                temp_data["T"]  = np.append(temp_data["T"], model.vars["T"])
+                
+                phi_data["x"]   = np.append(phi_data["x"], model.vars["x"] * 10**6)
+                phi_data["phi"] = np.append(phi_data["phi"], model.vars["phi"])
+                
+                sigma_ac_data["x"] = np.append(sigma_ac_data["x"], model.vars["x"] * 10**6)
+                sigma_ac_data["sigma_ac"] = np.append(sigma_ac_data["sigma_ac"], model.vars["sigma accumulated"])
+                
+                # plot c, Jq and sigma for each bulk phase separate
+                if quantity == "Jq":
+                    ax.plot(model.vars["x"]*10**6, model.vars["Jq"], color="r", linewidth=2)
+                
+                elif quantity == "sigma":
+                    ax.plot(model.vars["x"]*10**6, model.vars["sigma"], color="r", linewidth=2)
+                
+                elif quantity == "c":
+                    # plot c in different color
+                    if model == self.electrolyte:
+                        ax.plot(model.vars["x"]*10**6, model.vars["c"], color="b", linewidth=2)
+                    else:
+                        ax.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
+            else:
+                temp_data["x"] = np.append(temp_data["x"], model.vars["x"] * 10**6) 
+                temp_data["T"] = np.append(temp_data["T"], np.ones(2) * model.vars["T"])
+               
+        if quantity == "T":
+            # T, phi and sigma accumulated are plotted as one line along whole cell
+            ax.plot(temp_data["x"], temp_data["T"], color="r", linewidth=2)
+            
+        elif quantity == "phi":
+            ax.plot(phi_data["x"], phi_data["phi"], color="r", linewidth=2)
         
-        ax.set_title("Temperature profile", fontsize=14)
+        elif quantity == "sigma accumulated":
+            ax.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
+        
+        # format x-axes
+        ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
         ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
         
-        y_ticks = ax.get_yticks()
-        ax.set_yticks(y_ticks)
-        ax.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
+        # format temperature plot
+        if quantity == "T":
+            ax.set_ylabel("$T$ / K")
+            #ax.set_title("Temperature profile", fontsize=13)
+            y_ticks = ax.get_yticks()
+            ax.set_yticks(y_ticks)
+            ax.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
+            
+        # format electric potential plot
+        if quantity == "phi":
+            ax.set_ylabel("$\phi$ / V")
+            #ax.set_title("Potential profile", fontsize=13)
         
-        ax.set_xlabel(' x / ${\mu m}$', fontsize=12)
-        ax.set_ylabel("Temperature / K", fontsize=12)
-    
+        # format concentration plot
+        if quantity == "c":
+            ax.set_ylabel("$c$ / mol m$^{-3}$")
+            #ax.set_title("Concentration profile", fontsize=13)
+            lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"))
+            labels = ("Li", "LiPF$_6$")
+            ax.legend(lines, labels)
         
+        # format heatflux plot
+        if quantity == "Jq":
+            ax.set_ylabel("$J'_q$ / W m$^{-2}$")
+            #ax.set_title("Measurable heat flux", fontsize=13)
         
+        # format local entropy plot
+        if quantity == "sigma":
+            ax.set_ylabel("$\sigma$ / W m$^{-3}$ K$^{-1}$")
+            ax.set_title("Local entropy production", fontsize=13)
         
+        # format accumulated entropy plot
+        if quantity == "sigma accumulated":
+            ax.set_ylabel("$\sigma$ / W m$^{-2}$ K$^{-1}$")
+            #ax.set_title("Accumulated entropy production", fontsize=13)
+            
 #%% submodel
 class Submodel:
     def  __init__(self, model, name, mass_trans = True):
@@ -500,29 +559,6 @@ class Surface(Submodel):
         
         return -Jq_io/T_io * dT_is - Jq_oi/T_oi * dT_so - j/T_s*(dphi + dG/F)
 
-    def dJs(self, i, o):
-        """
-        calculates difference in entropy flux across surface
-
-        Parameters
-        ----------
-        i : object
-            instance of the bulk phase on the left-hand-side
-        o : object
-            instance of the bulk phase on the right-hand-side
-
-        Returns
-        -------
-        sigma : float
-        """
-        Jq_io, Jq_oi = i.vars["Jq"][-1], o.vars["Jq"][0]
-        T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
-        S_L = 29.09
-        
-        if self.name == "Anode Surface":
-            return Jq_oi/T_oi - Jq_io/T_io - j/F * S_L
-        else:
-            return Jq_oi/T_oi + j/F * S_L - Jq_io/T_io
 #%%% electrode
 class Electrode(Submodel):
     def __init__(self, params, name, mass_trans):
@@ -660,21 +696,6 @@ class Electrode(Submodel):
         dphidx = self.vars["dphidx"]
         
         return - dTdx/T**2 * Jq - dmudx/T * J_L - dphidx/T * j
-
-    def Js(self):
-        """
-        caculate entropy flux
-
-        Returns
-        -------
-        Js : np.array()
-        """
-        T      = self.vars["T"]
-        Jq     = self.vars["Jq"]
-        J_L    = self.vars["J_L"]
-        S_L    = 29.09
-        
-        return Jq/T + J_L*S_L
 #%%% electrolyte
 class Electrolyte(Submodel):
     def __init__(self, params, name, mass_trans):
@@ -882,20 +903,4 @@ class Electrolyte(Submodel):
         
         return - dTdx/T**2 * Jq - dphidx/T * j
     
-    def Js(self):
-        """
-        caculate entropy flux
-
-        Returns
-        -------
-        Js : np.array()
-        """
-        T      = self.vars["T"]
-        Jq     = self.vars["Jq"]
-        
-        return Jq/T 
-#%% main
-
-
-        
         

@@ -11,26 +11,26 @@ parameter = {
     "Anode": {
         "length":                       74    *10**(-6),        # m
         "thermal conductivity":          1.11,                  # W/m/K
-        "electric conductivity":      2204,                   # S/m
-        "peltier coefficient":           5.74 *Tamb,     #89000,#     # J/mol
+        "electric conductivity":      2204,                     # S/m
+        "peltier coefficient":        -9.67 * Tamb,             # J/mol 5.74
         "diffusion coefficient":        10    *10**(-11),       # m2/s
-        "initial concentration":     0.6*30555,                     # mol/m3
-        "thermodynamic factor":          0.01                    # -
+        "initial concentration":     0.8*30555,                 # mol/m3
+        "thermodynamic factor":          0.01                   # -
         },
     "Cathode": {
         "length":                       67    *10**(-6),        # m
         "thermal conductivity":          0.32,                  # W/m/K
         "electric conductivity":        6.75,                   # S/m
-        "peltier coefficient":            14.50 *Tamb,     #96500,#      # J/mol
+        "peltier coefficient":         14.50 * Tamb,            # J/mol  
         "diffusion coefficient":        10    *10**(-11),       # m2/s
-        "initial concentration":      0.4*22800,                     # mol/m3
-        "thermodynamic factor":         0.1                      # -
+        "initial concentration":      0.2*22800,                # mol/m3
+        "thermodynamic factor":         0.2                     # -
         },
     "Electrolyte": {
         "length":                       12    *10**(-6),        # m
         "thermal conductivity":          0.2,                   # W/m/K
         "electric conductivity":         0.23,                  # S/m
-        "peltier coefficient":        - 24.7  * 10**3,          # J/mol
+        "peltier coefficient":          24.7  * 10**3,          # J/mol
         "transference coefficient L":  - 0.97,
         "transference coefficient D":    0.9,
         "onsager coefficient LL":        3.7  * 10**(-11)*Tamb, # mol^2 K/(J m s)

@@ -15,5 +15,6 @@ model.init_mesh({"Anode":       100,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
-model.plot()
+#model.plot()
+model.plot_single("sigma accumulated")
 model.consistency_check()
