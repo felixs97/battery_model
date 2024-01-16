@@ -241,11 +241,11 @@ class LiionModel:
         both calulations should result in the same 
         """
 
-        S_La = 29.09
-        S_Lc = 29.09
+        S_ao, S_ae = 449.494, 449.5
+        S_co, S_ce = 487.982, 487.9 #29.09
         
-        Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_La 
-        Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_Lc
+        Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_ao 
+        Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_co
     
         dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
         print("*************** Consistency Check ***************\n")
@@ -254,6 +254,48 @@ class LiionModel:
         print(f"Entropy production accumulated:  {sigma:.8f} W/m2/K")
         print("\n")
         
+        
+        Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][0]*S_ae
+        Js_ea = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0]
+        Js_ec = self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
+        Js_ce = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][-1]*S_ce
+        
+        dJs_anode = Js_ae - Js_ao
+        dJs_anode_sf = Js_ea - Js_ae
+        dJs_electrolyte = Js_ec - Js_ea
+        dJs_cathode_sf = Js_ce - Js_ec
+        dJs_cathode = Js_co - Js_ce
+        
+        sigma_anode = self.anode.integrate("sigma")
+        sigma_electrolyte = self.electrolyte.integrate("sigma")
+        sigma_cathode = self.cathode.integrate("sigma")
+        sigma_anode_sf = self.anode_sf.vars["sigma"]
+        sigma_cathode_sf = self.cathode_sf.vars["sigma"]
+        
+        print("Anode")
+        print(f"Entropy fluxes difference:       {dJs_anode:.9f} W/m2/K")
+        print(f"Entropy production:              {sigma_anode[-1]:.9f} W/m2/K")
+        print("\n")
+        
+        print("Anode Surface")
+        print(f"Entropy fluxes difference:       {dJs_anode_sf:.9f} W/m2/K")
+        print(f"Entropy production:              {sigma_anode_sf:.9f} W/m2/K")
+        print("\n")
+        
+        print("Electrolyte")
+        print(f"Entropy fluxes difference:       {dJs_electrolyte:.9f} W/m2/K")
+        print(f"Entropy production:              {sigma_electrolyte[-1]:.9f} W/m2/K")
+        print("\n")
+        
+        print("Cathode Surface")
+        print(f"Entropy fluxes difference:       {dJs_cathode_sf:.9f} W/m2/K")
+        print(f"Entropy production               {sigma_cathode_sf:.9f} W/m2/K")
+        print("\n")
+        
+        print("Cathode")
+        print(f"Entropy fluxes difference:       {dJs_cathode:.9f} W/m2/K")
+        print(f"Entropy production:              {sigma_cathode[-1]:.9f} W/m2/K")
+        print("\n")
     def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
@@ -349,7 +391,8 @@ class LiionModel:
         quantity : string
             quantity to plot, select from list above
         """
-        fig, ax = plt.subplots(figsize=(6, 4), dpi=200)
+        fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
+        #fig, ax = plt.subplots(figsize=(3, 4), dpi=200)
 
         # Vertical spans 
         ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
@@ -402,9 +445,15 @@ class LiionModel:
         ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
         ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
         
+        # zoom on surfaces:
+        #ax.set_xlim(self.anode.vars["x"][-2]*10**(6)+0.5, self.electrolyte.vars["x"][1]*10**(6)-0.4)
+        #ax.set_xlim(self.electrolyte.vars["x"][-2]*10**(6)+0.55, self.cathode.vars["x"][1]*10**(6)-0.6)
+        
         # format temperature plot
         if quantity == "T":
             ax.set_ylabel("$T$ / K")
+            #ax.set_ylim(290.0004, 290.0006)
+            #ax.set_ylim(289.9987, 289.99885)
             #ax.set_title("Temperature profile", fontsize=13)
             y_ticks = ax.get_yticks()
             ax.set_yticks(y_ticks)
@@ -600,7 +649,7 @@ class Electrode(Submodel):
 
         T, dTdx = S
         rhs     = - pi*j / (lambda_*F*T) * dTdx - j**2 / (lambda_*kappa)
-        
+        #rhs = (24.214 - pi/T)* j/(lambda_*F) * dTdx - j**2 / (lambda_*kappa)
         return[dTdx, rhs]
     
     def Jq(self):

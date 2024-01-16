@@ -12,7 +12,7 @@ parameter = {
         "length":                       74    *10**(-6),        # m
         "thermal conductivity":          1.11,                  # W/m/K
         "electric conductivity":      2204,                     # S/m
-        "peltier coefficient":        -9.67 * Tamb,             # J/mol 5.74
+        "peltier coefficient":        -5.74 * Tamb,             # J/mol  9.67
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":     0.8*30555,                 # mol/m3
         "thermodynamic factor":          0.01                   # -
@@ -47,9 +47,9 @@ parameter = {
     "Anode Surface": {
         "length":                      50     * 10**(-9),      # m
         "thermal conductivity":         0.65,                  # W/m/K
-        "OCP":                          0.1,                   # V
+        "OCP":                          0.15,                   # V
         "exchange current density":     0.8,                   # A/m^2
-        "peltier heat":              -114     * 10**3,         # J/mol
+        "peltier heat":              -104     * 10**3,         # J/mol
         "correction factor":           14                      # -
         }, 
     "Cathode Surface": {
