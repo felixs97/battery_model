@@ -9,12 +9,12 @@ from params_sys import Tamb
 import params_LFP 
 import classes_new as c
 
-model = c.LiionModel("LFP", params_LFP, mass_trans = True)  
+model = c.LiionModel("LFP", params_LFP)  
 model.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model.boundary_conditions(Tamb, Tamb)
 model.solve()
-model.plot()
+#model.plot()
 #model.plot_single("T")
-model.consistency_check()
+model.consistency_check(show_subsystems=False)

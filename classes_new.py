@@ -235,14 +235,16 @@ class LiionModel:
         self.__calc_J_i()
         self.__calc_sigma()
         
-    def consistency_check(self):
+    def consistency_check(self, show_subsystems=False):
         """
         calculate and print entropy for each phase and for whole cell in two different ways to check consistency
         both calulations should result in the same 
         """
-
-        S_ao, S_ae = 449.494, 449.5
-        S_co, S_ce = 487.982, 487.9 #29.09
+        
+        S_ae = self.anode_sf.partial_molar_entropy(self.anode, self.electrolyte)
+        S_ce = self.cathode_sf.partial_molar_entropy(self.electrolyte, self.cathode)
+        S_ao = self.anode.partial_molar_entropy(S_ae)
+        S_co = self.cathode.partial_molar_entropy(S_ce)
         
         Js_ao = self.anode.vars["Jq"][0]/self.anode.vars["T"][0] + self.anode.vars["J_L"][0]*S_ao 
         Js_co = self.cathode.vars["Jq"][-1]/self.cathode.vars["T"][-1] + self.cathode.vars["J_L"][-1]*S_co
@@ -250,52 +252,52 @@ class LiionModel:
         dJs, sigma = Js_co - Js_ao, self.cathode.vars["sigma accumulated"][-1]
         print("*************** Consistency Check ***************\n")
         
-        print(f"Entropy fluxes difference:       {dJs:.8f} W/m2/K")
-        print(f"Entropy production accumulated:  {sigma:.8f} W/m2/K")
+        print(f"Entropy fluxes difference:       {dJs:.5f} W/m2/K")
+        print(f"Entropy production accumulated:  {sigma:.5f} W/m2/K")
         print("\n")
         
+        if show_subsystems:
+            Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][0]*S_ae
+            Js_ea = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0]
+            Js_ec = self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
+            Js_ce = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][-1]*S_ce
+            
+            dJs_anode = Js_ae - Js_ao
+            dJs_anode_sf = Js_ea - Js_ae
+            dJs_electrolyte = Js_ec - Js_ea
+            dJs_cathode_sf = Js_ce - Js_ec
+            dJs_cathode = Js_co - Js_ce
+            
+            sigma_anode = self.anode.integrate("sigma")
+            sigma_electrolyte = self.electrolyte.integrate("sigma")
+            sigma_cathode = self.cathode.integrate("sigma")
+            sigma_anode_sf = self.anode_sf.vars["sigma"]
+            sigma_cathode_sf = self.cathode_sf.vars["sigma"]
+            
+            print("Anode")
+            print(f"Entropy fluxes difference:       {dJs_anode:.9f} W/m2/K")
+            print(f"Entropy production:              {sigma_anode[-1]:.9f} W/m2/K")
+            print("\n")
+            
+            print("Anode Surface")
+            print(f"Entropy fluxes difference:       {dJs_anode_sf:.9f} W/m2/K")
+            print(f"Entropy production:              {sigma_anode_sf:.9f} W/m2/K")
+            print("\n")
+            
+            print("Electrolyte")
+            print(f"Entropy fluxes difference:       {dJs_electrolyte:.9f} W/m2/K")
+            print(f"Entropy production:              {sigma_electrolyte[-1]:.9f} W/m2/K")
+            print("\n")
+            
+            print("Cathode Surface")
+            print(f"Entropy fluxes difference:       {dJs_cathode_sf:.9f} W/m2/K")
+            print(f"Entropy production               {sigma_cathode_sf:.9f} W/m2/K")
+            print("\n")
+            
+            print("Cathode")
+            print(f"Entropy fluxes difference:       {dJs_cathode:.9f} W/m2/K")
+            print(f"Entropy production:              {sigma_cathode[-1]:.9f} W/m2/K")
         
-        Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][0]*S_ae
-        Js_ea = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0]
-        Js_ec = self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
-        Js_ce = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][-1]*S_ce
-        
-        dJs_anode = Js_ae - Js_ao
-        dJs_anode_sf = Js_ea - Js_ae
-        dJs_electrolyte = Js_ec - Js_ea
-        dJs_cathode_sf = Js_ce - Js_ec
-        dJs_cathode = Js_co - Js_ce
-        
-        sigma_anode = self.anode.integrate("sigma")
-        sigma_electrolyte = self.electrolyte.integrate("sigma")
-        sigma_cathode = self.cathode.integrate("sigma")
-        sigma_anode_sf = self.anode_sf.vars["sigma"]
-        sigma_cathode_sf = self.cathode_sf.vars["sigma"]
-        
-        print("Anode")
-        print(f"Entropy fluxes difference:       {dJs_anode:.9f} W/m2/K")
-        print(f"Entropy production:              {sigma_anode[-1]:.9f} W/m2/K")
-        print("\n")
-        
-        print("Anode Surface")
-        print(f"Entropy fluxes difference:       {dJs_anode_sf:.9f} W/m2/K")
-        print(f"Entropy production:              {sigma_anode_sf:.9f} W/m2/K")
-        print("\n")
-        
-        print("Electrolyte")
-        print(f"Entropy fluxes difference:       {dJs_electrolyte:.9f} W/m2/K")
-        print(f"Entropy production:              {sigma_electrolyte[-1]:.9f} W/m2/K")
-        print("\n")
-        
-        print("Cathode Surface")
-        print(f"Entropy fluxes difference:       {dJs_cathode_sf:.9f} W/m2/K")
-        print(f"Entropy production               {sigma_cathode_sf:.9f} W/m2/K")
-        print("\n")
-        
-        print("Cathode")
-        print(f"Entropy fluxes difference:       {dJs_cathode:.9f} W/m2/K")
-        print(f"Entropy production:              {sigma_cathode[-1]:.9f} W/m2/K")
-        print("\n")
     def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
@@ -560,6 +562,36 @@ class Surface(Submodel):
         self.params["gibbs energy"] = - OCP * F
         self.params["overpotential"] = self.__overpotential(j0)
         self.params["thermal conductivity"] = lambda_ / (k*L) 
+    
+    def partial_molar_entropy(self, i, o):
+        """
+        Calcualte partial molar entropy of surface using the peltier heat and peltier coefficents
+
+        Parameters
+        ----------
+        i : object
+            instance of the bulk phase on the left-hand-side.
+        o : object
+            instance of the bulk phase on the lright-hand-side.
+
+        Returns
+        -------
+        S_io : float
+            partial molar entropy of surface
+        """
+        
+        pi_i = i.params["peltier coefficient"]
+        pi_o = o.params["peltier coefficient"]
+        pi_sf = self.params["peltier heat"]
+        T_i = i.vars["T"][-1]
+        T_o = o.vars["T"][0]
+        
+        if self.name == "Anode Surface":
+            S_io = (pi_o - pi_i - pi_sf)/T_i
+        else:
+            S_io = (pi_sf + pi_i - pi_o)/T_o
+            
+        return S_io
         
     def dphi(self, i, o):
         """
@@ -646,11 +678,24 @@ class Electrode(Submodel):
         pi = self.params["peltier coefficient"]
         lambda_ = self.params["thermal conductivity"]
         kappa = self.params["electric conductivity"]
+        #cp = self.params["heat capacity"]
 
         T, dTdx = S
         rhs     = - pi*j / (lambda_*F*T) * dTdx - j**2 / (lambda_*kappa)
         #rhs = (24.214 - pi/T)* j/(lambda_*F) * dTdx - j**2 / (lambda_*kappa)
         return[dTdx, rhs]
+    
+    def partial_molar_entropy(self, S_sf):
+        sigma_accum = self.integrate("sigma")[-1]
+        Jq_r, Jq_l = self.vars["Jq"][-1],self.vars["Jq"][0]
+        T_r, T_l = self.vars["T"][-1],self.vars["T"][0]
+        
+        if self.name == "Anode":
+            S_boundary = (Jq_r/T_r - Jq_l/T_l - sigma_accum)*(F/j) + S_sf
+        else: 
+            S_boundary = (sigma_accum + Jq_l/T_l - Jq_r/T_r)*(F/j) + S_sf 
+        
+        return S_boundary 
     
     def Jq(self):
         """
@@ -749,7 +794,6 @@ class Electrode(Submodel):
 class Electrolyte(Submodel):
     def __init__(self, params, name, mass_trans):
         super().__init__(params, name, mass_trans)
-        self.mass_trans = True
         self.__def_params()
         
     
