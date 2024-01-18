@@ -43,11 +43,12 @@ parameter = {
         "thermodynamic factor DL":     - 0.98,                  # -
         "thermodynamic factor DD":       1.23,                  # -
         "initial concentration L":     1000,                    # mol/m3
+        "initial concentration D":     1000                     # mol/m3
         },
     "Anode Surface": {
         "length":                      50     * 10**(-9),      # m
         "thermal conductivity":         0.65,                  # W/m/K
-        "OCP":                          0.15,                   # V
+        "OCP":                          -0.15,                   # V
         "exchange current density":     0.8,                   # A/m^2
         "peltier heat":              -104     * 10**3,         # J/mol
         "correction factor":           14                      # -

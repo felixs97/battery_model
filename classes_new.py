@@ -164,8 +164,11 @@ class LiionModel:
         
         self.electrolyte.vars["dmuLdx"] = self.electrolyte.dmudx("L")
         self.electrolyte.vars["dmuDdx"] = self.electrolyte.dmudx("D")
-        self.electrolyte.vars["c"] = self.electrolyte.c()
-        self.electrolyte.vars["dcdx"] = self.electrolyte.dcdx()
+        
+        self.electrolyte.vars["cL"] = self.electrolyte.c("L")
+        self.electrolyte.vars["dcLdx"] = self.electrolyte.gradient("cL")
+        self.electrolyte.vars["cD"] = self.electrolyte.c("D")
+        self.electrolyte.vars["dcDdx"] = self.electrolyte.gradient("cD")
         
     def __calc_J_i(self):
         """
@@ -336,7 +339,8 @@ class LiionModel:
                     #sigma.plot(model.vars["x"]*10**6, model.vars["dJsdx"], color="b", linewidth=2, linestyle = "--")
                     # plot c in different color
                     if model == self.electrolyte:
-                        c.plot(model.vars["x"]*10**6, model.vars["c"], color="b", linewidth=2)
+                        c.plot(model.vars["x"]*10**6, model.vars["cL"], color="b", linewidth=2)
+                        c.plot(model.vars["x"]*10**6, model.vars["cD"], color="g", linewidth=2)
                     else:
                         c.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
                 else:
@@ -366,8 +370,8 @@ class LiionModel:
             # format concentration plot
             c.set_ylabel("$c$ / mol m$^{-3}$")
             c.set_title("Concentration profile", fontsize=13)
-            lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"))
-            labels = ("Li", "LiPF$_6$")
+            lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"), Line2D([0], [0], color = "g", linestyle="-"))
+            labels = ("Li", "LiPF$_6$", "DEC")
             c.legend(lines, labels)
             
             # format heatflux plot
@@ -393,8 +397,8 @@ class LiionModel:
         quantity : string
             quantity to plot, select from list above
         """
-        fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
-        #fig, ax = plt.subplots(figsize=(3, 4), dpi=200)
+        #fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
+        fig, ax = plt.subplots(figsize=(3, 4), dpi=200)
 
         # Vertical spans 
         ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
@@ -426,7 +430,8 @@ class LiionModel:
                 elif quantity == "c":
                     # plot c in different color
                     if model == self.electrolyte:
-                        ax.plot(model.vars["x"]*10**6, model.vars["c"], color="b", linewidth=2)
+                        ax.plot(model.vars["x"]*10**6, model.vars["cL"], color="b", linewidth=2)
+                        ax.plot(model.vars["x"]*10**6, model.vars["cD"], color="g", linewidth=2)
                     else:
                         ax.plot(model.vars["x"]*10**6, model.vars["c"], color="r", linewidth=2)
             else:
@@ -445,16 +450,19 @@ class LiionModel:
         
         # format x-axes
         ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
-        ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
+        #ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
         
         # zoom on surfaces:
         #ax.set_xlim(self.anode.vars["x"][-2]*10**(6)+0.5, self.electrolyte.vars["x"][1]*10**(6)-0.4)
         #ax.set_xlim(self.electrolyte.vars["x"][-2]*10**(6)+0.55, self.cathode.vars["x"][1]*10**(6)-0.6)
         
+        # zoom on electrolyte
+        ax.set_xlim(self.electrolyte.vars["x"][0]*10**(6), self.electrolyte.vars["x"][-1]*10**(6))
+        
         # format temperature plot
         if quantity == "T":
             ax.set_ylabel("$T$ / K")
-            #ax.set_ylim(290.0004, 290.0006)
+            #ax.set_ylim(290.00035, 290.0004)
             #ax.set_ylim(289.9987, 289.99885)
             #ax.set_title("Temperature profile", fontsize=13)
             y_ticks = ax.get_yticks()
@@ -470,9 +478,14 @@ class LiionModel:
         if quantity == "c":
             ax.set_ylabel("$c$ / mol m$^{-3}$")
             #ax.set_title("Concentration profile", fontsize=13)
-            lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"))
-            labels = ("Li", "LiPF$_6$")
+            #lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="-"), Line2D([0], [0], color = "g", linestyle="-"))
+            #labels = ("Li", "LiPF$_6$", "DEC")
+            
+            lines = (Line2D([0], [0], color = "b", linestyle="-"), Line2D([0], [0], color = "g", linestyle="-"))
+            labels = ("LiPF$_6$", "DEC")
+            
             ax.legend(lines, labels)
+            ax.set_ylim(800, 1100)
         
         # format heatflux plot
         if quantity == "Jq":
@@ -527,6 +540,22 @@ class Submodel:
         """
         
         return cumtrapz(self.vars[dydx], self.vars["x"], initial=0)  + y0
+    
+    def gradient(self, y):
+        """
+        calculate gradient in x of component y
+
+        Parameters
+        ----------
+        y : string
+            name of quantity in dictionary "vars"
+
+        Returns
+        -------
+        dydx : np.array()
+            gradient of y in x
+        """
+        return np.gradient(self.vars[y], self.vars["x"])
 #%%% surface    
 class Surface(Submodel):
     def __init__(self, params, name):
@@ -901,16 +930,16 @@ class Electrolyte(Submodel):
         
         return -a_phi/(T*F) * dTdx - b_phi*j/F**2 * T - j/kappa
     
-    def __conc_function(self, x, c):
+    def __concL_function(self, x, cL):
         """
-        serves as input function for ivp_solve()
+        serves as input function for ivp_solve() to solve for lithium concentration
         
         Parameters
         ----------
         x : np.array()
             spatial mesh
         c : np.array()
-            concentration along x
+            lithium concentration along x
 
         Returns
         -------
@@ -926,11 +955,49 @@ class Electrolyte(Submodel):
         dmuLdx = np.mean(self.vars["dmuLdx"])
         dmuDdx = np.mean(self.vars["dmuDdx"])
         
-        return (dmuLdx - tdf_LD/tdf_DD*dmuDdx)/(tdf_LL - tdf_LD*tdf_DL/tdf_DD) * c/(R*T)
+        T =  (self.vars["T"])
+        dmuLdx =  (self.vars["dmuLdx"])
+        dmuDdx =  (self.vars["dmuDdx"])
+        
+        return (dmuLdx - tdf_LD/tdf_DD*dmuDdx)/(tdf_LL - tdf_LD*tdf_DL/tdf_DD) * cL/(R*T)
     
-    def c(self):
+    def __concD_function(self, x, cD):
         """
-        solves for c and dcdx
+        serves as input function for ivp_solve() to solve for DEC concentration
+        
+        Parameters
+        ----------
+        x : np.array()
+            spatial mesh
+        c : np.array()
+            DEC concentration along x
+
+        Returns
+        -------
+        dcdx : np.array()
+            returns function dcdx of c and x.
+        """
+        tdf_DD = self.params["thermodynamic factor DD"]
+        tdf_DL = self.params["thermodynamic factor DL"]
+        
+        T = np.mean(self.vars["T"])
+        dmuLdx = np.mean(self.vars["dmuLdx"])
+        dmuDdx = np.mean(self.vars["dmuDdx"])
+        dcLdx = np.mean(self.vars["dcLdx"])
+        cL = np.mean(self.vars["cL"])
+        
+        T =  (self.vars["T"])
+        dmuLdx =  (self.vars["dmuLdx"])
+        dmuDdx =  (self.vars["dmuDdx"])
+        dcLdx =  (self.vars["dcLdx"])
+        cL =  (self.vars["cL"])
+
+        return cD*(dmuDdx/(R*T*tdf_DD) - tdf_DL/tdf_DD/cL)
+    
+    
+    def c(self, component):
+        """
+        solves for c 
 
         Returns
         -------
@@ -939,11 +1006,15 @@ class Electrolyte(Submodel):
         dcdx : np.array()
         """
         x = self.vars["x"]
-        c0 = self.params["initial concentration L"]
         
-        sol = solve_ivp(self.__conc_function, (x[0], x[-1]), [c0], t_eval=x)
+        if component == "L":
+            c0 = self.params["initial concentration L"]
+            sol = solve_ivp(self.__concL_function, (x[0], x[-1]), [c0], t_eval=x)
+        else:
+            c0 = self.params["initial concentration D"]
+            sol = solve_ivp(self.__concD_function, (x[0], x[-1]), [c0], t_eval=x)
+       
         c = sol.y[0]
-        
         return c
     
     def dcdx(self):
@@ -954,10 +1025,7 @@ class Electrolyte(Submodel):
         -------
         dcdx : np.array()
         """
-        dc = np.gradient(self.vars["c"])
-        dx = np.gradient(self.vars["x"])
-        
-        return dc/dx
+        return np.gradient(self.vars["c"], self.vars["x"])
     
     def dmudx(self, component):
         """
