@@ -58,7 +58,7 @@ def plot(*models):
     ax.axvspan(0, 74, facecolor='b', alpha=0.1)
     ax.axvspan(86.06, 153.06, facecolor='r', alpha=0.1)
     
-    ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
+    ax.set_xlabel(r' $x$ / $\mu$m', fontsize=12)
     ax.set_xlim(0, 153.06)
     
     ax.set_ylabel("$T$ / K")
@@ -95,7 +95,7 @@ def plot_Jq(*models):
     ax.axvspan(0, 74, facecolor='b', alpha=0.1)
     ax.axvspan(86.06, 153.06, facecolor='r', alpha=0.1)
     
-    ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
+    ax.set_xlabel(r' $x$ / $\mu$m', fontsize=12)
     ax.set_xlim(0, 153.06)
     
     ax.set_ylabel("$J'_q$ / W m$^{-2}$")
@@ -124,7 +124,7 @@ def plot_surface(*models, surface):
     ax.axvspan(74, 74.05, facecolor='k', alpha=0.3)
     ax.axvspan(86.05, 86.06, facecolor='k', alpha=0.3)
 
-    ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
+    ax.set_xlabel(r' $x$ / $\mu$m', fontsize=12)
     
     if surface == "Anode":
         # Anode Surface:

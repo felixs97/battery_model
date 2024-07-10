@@ -9,7 +9,7 @@ Created on Fri Dec 15 11:19:31 2023
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
@@ -354,7 +354,7 @@ class LiionModel:
             sigma_ac.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
             
             # format x-axes
-            ax.set_xlabel(' $x$ / $\mu$m', fontsize=12)
+            ax.set_xlabel(r' $x$ / $\mu$m', fontsize=12)
             ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
             
             # format temperature plot
@@ -365,7 +365,7 @@ class LiionModel:
             T.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
             
             # format electric potential plot
-            phi.set_ylabel("$\phi$ / V")
+            phi.set_ylabel(r"$\phi$ / V")
             phi.set_title("Potential profile", fontsize=13)
             
             # format concentration plot
@@ -380,12 +380,14 @@ class LiionModel:
             Jq.set_title("Measurable heat flux", fontsize=13)
             
             # format local entropy plot
-            sigma.set_ylabel("$\sigma$ / W m$^{-3}$ K$^{-1}$")
+            sigma.set_ylabel(r"$\sigma$ / W m$^{-3}$ K$^{-1}$")
             sigma.set_title("Local entropy production", fontsize=13)
             
             # format accumulated entropy plot
-            sigma_ac.set_ylabel("$\sigma$ / W m$^{-2}$ K$^{-1}$")
+            sigma_ac.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             sigma_ac.set_title("Accumulated entropy production", fontsize=13)
+
+            #plt.show()
             
     
     def plot_single(self, quantity):
@@ -462,7 +464,7 @@ class LiionModel:
             ax.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
         
         # format x-axes
-        ax.set_xlabel(' $x$ / $\mu$m')
+        ax.set_xlabel(r' $x$ / $\mu$m')
         ax.set_xlim(self.anode.vars["x"][0]*10**(6), self.cathode.vars["x"][-1]*10**(6))
         
         # zoom on surfaces:
@@ -484,7 +486,7 @@ class LiionModel:
             
         # format electric potential plot
         if quantity == "phi":
-            ax.set_ylabel("$\phi$ / V")
+            ax.set_ylabel(r"$\phi$ / V")
             #ax.set_title("Potential profile", fontsize=13)
             lines = (Line2D([0], [0], color = "r", linestyle="-"), Line2D([0], [0], color = "b", linestyle="--"))
             labels = ("In Operation", "OCV")
@@ -504,14 +506,14 @@ class LiionModel:
             #ax.set_ylim(0, 8000)
         
         if quantity == "dmu":
-            ax.set_ylabel("$\Delta \mu_{i,T}$ / J mol$^{-1}$")
+            ax.set_ylabel(r"$\Delta \mu_{i,T}$ / J mol$^{-1}$")
             lines = (Line2D([0], [0], color = "b", linestyle="-"), Line2D([0], [0], color = "g", linestyle="-"), Line2D([0], [0], color = "orange", linestyle="-"))
             labels = ("LiPF$_6$", "DEC", "EC")
             
             ax.legend(lines, labels, loc='lower left')
         
         if quantity == "dc":
-            ax.set_ylabel("$\Delta c$ / mol m$^{-3}$")
+            ax.set_ylabel(r"$\Delta c$ / mol m$^{-3}$")
             lines = (Line2D([0], [0], color = "b", linestyle="-"), Line2D([0], [0], color = "g", linestyle="-"), Line2D([0], [0], color = "orange", linestyle="-"))
             labels = ("LiPF$_6$", "DEC", "EC")
             
@@ -524,12 +526,12 @@ class LiionModel:
         
         # format local entropy plot
         if quantity == "sigma":
-            ax.set_ylabel("$\sigma$ / W m$^{-3}$ K$^{-1}$")
+            ax.set_ylabel(r"$\sigma$ / W m$^{-3}$ K$^{-1}$")
             ax.set_title("Local entropy production", fontsize=13)
         
         # format accumulated entropy plot
         if quantity == "sigma accumulated":
-            ax.set_ylabel("$\sigma$ / W m$^{-2}$ K$^{-1}$")
+            ax.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             #ax.set_title("Accumulated entropy production", fontsize=13)
             
 #%% submodel
@@ -569,7 +571,7 @@ class Submodel:
             integrated value y
         """
         
-        return cumtrapz(self.vars[dydx], self.vars["x"], initial=0)  + y0
+        return cumulative_trapezoid(self.vars[dydx], self.vars["x"], initial=0)  + y0
     
     def gradient(self, y):
         """
