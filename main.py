@@ -17,6 +17,9 @@ model.boundary_conditions(Tamb, Tamb)
 model.solve()
 model.plot()
 
+# optional output about model consistency
+#model.consistency_check(show_subsystems=True)
+
 
 
 
