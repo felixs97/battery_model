@@ -311,7 +311,7 @@ class LiionModel:
 
         """
 
-        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(14, 7), layout="constrained", dpi=400)
+        fig, ((T, phi, c), (Jq, sigma, sigma_ac)) = plt.subplots(2, 3, figsize=(14, 7), layout="constrained", dpi=100)
         for ax in (T, phi, c, Jq, sigma, sigma_ac):
             # Vertical spans 
             ax.axvspan(0, self.anode.vars["x"][-1]*10**(6), facecolor='b', alpha=0.1)
@@ -387,7 +387,7 @@ class LiionModel:
             sigma_ac.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             sigma_ac.set_title("Accumulated entropy production", fontsize=13)
 
-            #plt.show()
+        plt.show()
             
     
     def plot_single(self, quantity):
