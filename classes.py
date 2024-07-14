@@ -300,6 +300,7 @@ class LiionModel:
             print("Cathode")
             print(f"Entropy fluxes difference:       {dJs_cathode:.9f} W/m2/K")
             print(f"Entropy production:              {sigma_cathode[-1]:.9f} W/m2/K")
+            print("\n")
         
             print("Entopy fluxes at the surface where determined using the partial molar entropy")
             print("Partial molar entropy at the surface is determined using the local temperatures, the peltier heat and the peltier coefficients")
