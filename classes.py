@@ -303,10 +303,10 @@ class LiionModel:
             print("\n")
         
             print("Partial Molar Entropies where determined, using the Peltier heat, Peltier coefficient and the local temperatures")
-            print(f"Partial Molar Entropy of Anode Surface:              {S_ae:.1f} W/m2/K")
-            print(f"Partial Molar Entropy of Anode on left-hand-side:    {S_ao:.1f} W/m2/K")
-            print(f"Partial Molar Entropy of Cathode Surface:            {S_ce:.1f} W/m2/K")
-            print(f"Partial Molar Entropy of Cathode on right-hand-side: {S_co:.1f} W/m2/K")
+            print(f"Partial Molar Entropy of Anode Surface:              {S_ae:.1f} J/mol/K")
+            print(f"Partial Molar Entropy of Anode on left-hand-side:    {S_ao:.1f} J/mol/K")
+            print(f"Partial Molar Entropy of Cathode Surface:            {S_ce:.1f} J/mol/K")
+            print(f"Partial Molar Entropy of Cathode on right-hand-side: {S_co:.1f} J/mol/K")
  
     def plot(self):
         """
@@ -394,6 +394,7 @@ class LiionModel:
             sigma_ac.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             sigma_ac.set_title("Accumulated entropy production", fontsize=13)
 
+        fig.savefig('all_results.png')
         plt.show()
             
     
@@ -1120,4 +1121,4 @@ class Electrolyte(Submodel):
         
         return - dTdx/T**2 * Jq - dphidx/T * j
     
-        
+
