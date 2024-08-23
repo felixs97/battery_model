@@ -13,7 +13,7 @@ parameter = {
         "thermal conductivity":          1.11,                  # W/m/K
         "heat capacity L":               24.6,                  # J/mol/K
         "electric conductivity":      2204,                     # S/m
-        "peltier coefficient":        -5.74 * Tamb,             # J/mol  
+        "peltier coefficient":        -104 * 10**3,             # J/mol  
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":     0.8*30555,                 # mol/m3
         "thermodynamic factor":          0.1                    # -
@@ -23,7 +23,7 @@ parameter = {
         "thermal conductivity":          0.32,                  # W/m/K
         "heat capacity L":               24.6,                  # J/mol/K
         "electric conductivity":        6.75,                   # S/m
-        "peltier coefficient":         14.50 * Tamb,            # J/mol  
+        "peltier coefficient":         122 * 10**3,             # J/mol  
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":      0.2*22800,                # mol/m3
         "thermodynamic factor":         0.5                     # -
@@ -53,7 +53,7 @@ parameter = {
         "thermal conductivity":         0.65,                  # W/m/K
         "OCP":                         -0.15,                  # V
         "exchange current density":     0.8,                   # A/m^2
-        "peltier heat":              -122     * 10**3,         # J/mol
+        "peltier heat":              -104     * 10**3,         # J/mol
         "correction factor":           14                      # -
         }, 
     "Cathode Surface": {
@@ -61,7 +61,7 @@ parameter = {
         "thermal conductivity":         1.11,                  # W/m/K
         "OCP":                          3.45,                  # V
         "exchange current density":     1.7,                   # A/m^2
-        "peltier heat":               119     * 10**3,         # J/mol
+        "peltier heat":               122     * 10**3,         # J/mol
         "correction factor":          110                      # -
         }
     }
