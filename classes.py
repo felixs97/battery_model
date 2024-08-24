@@ -60,12 +60,15 @@ class LiionModel:
         
         if sf.name == "Anode Surface":
             dT_is = lambda_i/lambda_s * dTdx_io
-            dT_so = dT_is + pi_s*j/F/lambda_s - eta*j/lambda_s 
+            #dT_so = dT_is + pi_s*j/F/lambda_s - eta*j/lambda_s
+            dT_so = ((lambda_s - pi_i*j/(F*T_io))*dT_is + pi_s*j/F - eta*j) / (pi_o*j/(F*T_io + lambda_s))
             dTdx_oi = (lambda_s * dT_so + j/F*(b_q - pi_o))/(lambda_o - a_q/T_io**2)
         else:
             dT_is = ((lambda_i - a_q/T_io**2)*dTdx_io + j/F*(pi_i - b_q))/lambda_s
-            dT_so = dT_is + pi_s*j/(lambda_s*F) - eta*j/lambda_s
-            dTdx_oi =  lambda_s/lambda_o * dT_so
+            #dT_so = dT_is + pi_s*j/(lambda_s*F) - eta*j/lambda_s
+            dT_so = ((lambda_s - pi_i*j/(F*T_io))*dT_is + pi_s*j/F - eta*j) / (pi_o*j/(F*T_io) + lambda_s)
+            dTdx_oi = lambda_s/lambda_o * dT_so
+
         
         T_s = T_io + dT_is
         T_oi = T_s + dT_so
@@ -260,10 +263,10 @@ class LiionModel:
         print("\n")
         
         if show_subsystems:
-            Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][0]*S_ae
+            Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_ae
             Js_ea = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0]
             Js_ec = self.electrolyte.vars["Jq"][-1]/self.electrolyte.vars["T"][-1]
-            Js_ce = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][-1]*S_ce
+            Js_ce = self.cathode.vars["Jq"][0]/self.cathode.vars["T"][0] + self.cathode.vars["J_L"][0]*S_ce
             
             dJs_anode = Js_ae - Js_ao
             dJs_anode_sf = Js_ea - Js_ae
@@ -541,7 +544,7 @@ class LiionModel:
         if quantity == "sigma accumulated":
             ax.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             #ax.set_title("Accumulated entropy production", fontsize=13)
-            
+        plt.show()
 #%% submodel
 class Submodel:
     def  __init__(self, model, name, mass_trans = True):
@@ -852,7 +855,7 @@ class Electrode(Submodel):
         sigma : np.array()
         """
         T      = self.vars["T"]
-        dTdx   = self.vars["T"]
+        dTdx   = self.vars["dTdx"]
         Jq     = self.vars["Jq"]
         J_L    = self.vars["J_L"]
         dmudx  = self.vars["dmudx"]
@@ -1115,7 +1118,7 @@ class Electrolyte(Submodel):
         sigma : np.array()
         """
         T      = self.vars["T"]
-        dTdx   = self.vars["T"]
+        dTdx   = self.vars["dTdx"]
         Jq     = self.vars["Jq"]
         dphidx = self.vars["dphidx"]
         
