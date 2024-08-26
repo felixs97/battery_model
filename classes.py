@@ -61,7 +61,7 @@ class LiionModel:
         if sf.name == "Anode Surface":
             dT_is = lambda_i/lambda_s * dTdx_io
             #dT_so = dT_is + pi_s*j/F/lambda_s - eta*j/lambda_s
-            dT_so = ((lambda_s - pi_i*j/(F*T_io))*dT_is + pi_s*j/F - eta*j) / (pi_o*j/(F*T_io + lambda_s))
+            dT_so = ((lambda_s - pi_i*j/(F*T_io))*dT_is + pi_s*j/F - eta*j) / (pi_o*j/(F*T_io) + lambda_s)
             dTdx_oi = (lambda_s * dT_so + j/F*(b_q - pi_o))/(lambda_o - a_q/T_io**2)
         else:
             dT_is = ((lambda_i - a_q/T_io**2)*dTdx_io + j/F*(pi_i - b_q))/lambda_s
