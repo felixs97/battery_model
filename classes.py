@@ -710,7 +710,7 @@ class Surface(Submodel):
         dphi = self.vars["dphi"]
         dG = self.params["gibbs energy"]
         
-        return -Jq_io/T_io * dT_is - Jq_oi/T_oi * dT_so - j/T_s*(dphi + dG/F)
+        return -Jq_io/(T_io*T_s) * dT_is - Jq_oi/(T_oi*T_s) * dT_so - j/T_s*(dphi + dG/F)
 
 #%%% electrode
 class Electrode(Submodel):
