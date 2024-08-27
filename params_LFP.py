@@ -13,7 +13,7 @@ parameter = {
         "thermal conductivity":          1.11,                  # W/m/K
         "heat capacity L":               24.6,                  # J/mol/K
         "electric conductivity":      2204,                     # S/m
-        "peltier coefficient":        -104 * 10**3,             # J/mol  
+        "peltier coefficient":        -1.8 * Tamb,              # J/mol  
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":     0.8*30555,                 # mol/m3
         "thermodynamic factor":          0.1                    # -
@@ -23,7 +23,7 @@ parameter = {
         "thermal conductivity":          0.32,                  # W/m/K
         "heat capacity L":               24.6,                  # J/mol/K
         "electric conductivity":        6.75,                   # S/m
-        "peltier coefficient":         122 * 10**3,             # J/mol  
+        "peltier coefficient":         14.5 * Tamb,             # J/mol  
         "diffusion coefficient":        10    *10**(-11),       # m2/s
         "initial concentration":      0.2*22800,                # mol/m3
         "thermodynamic factor":         0.5                     # -
