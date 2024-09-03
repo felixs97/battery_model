@@ -246,6 +246,8 @@ class LiionModel:
         calculate and print entropy for each phase and for whole cell in two different ways to check consistency
         both calulations should result in the same 
         """
+
+        write_out = 'consistency_check.txt'
         
         S_ae = self.anode_sf.partial_molar_entropy(self.anode, self.electrolyte)
         S_ce = self.cathode_sf.partial_molar_entropy(self.electrolyte, self.cathode)
@@ -262,6 +264,12 @@ class LiionModel:
         print(f"Entropy production accumulated:  {sigma:.5f} W/m2/K")
         print("\n")
         
+        with open(write_out, "w") as o:
+            o.write("*************** Consistency Check ***************\n\n")
+            o.write(f"Entropy fluxes difference:       {dJs:.5f} W/m2/K\n")
+            o.write(f"Entropy production accumulated:  {sigma:.5f} W/m2/K\n")
+            o.write("\n\n")
+
         if show_subsystems:
             Js_ae = self.anode.vars["Jq"][-1]/self.anode.vars["T"][-1] + self.anode.vars["J_L"][-1]*S_ae
             Js_ea = self.electrolyte.vars["Jq"][0]/self.electrolyte.vars["T"][0]
@@ -310,7 +318,39 @@ class LiionModel:
             print(f"Partial Molar Entropy of Anode on left-hand-side:    {S_ao:.1f} J/mol/K")
             print(f"Partial Molar Entropy of Cathode Surface:            {S_ce:.1f} J/mol/K")
             print(f"Partial Molar Entropy of Cathode on right-hand-side: {S_co:.1f} J/mol/K")
- 
+        
+            with open(write_out, "a") as o:
+                o.write("Anode\n")
+                o.write(f"Entropy fluxes difference:       {dJs_anode:.9f} W/m2/K\n")
+                o.write(f"Entropy production:              {sigma_anode[-1]:.9f} W/m2/K\n")
+                o.write("\n\n")
+                
+                o.write("Anode Surface\n")
+                o.write(f"Entropy fluxes difference:       {dJs_anode_sf:.9f} W/m2/K\n")
+                o.write(f"Entropy production:              {sigma_anode_sf:.9f} W/m2/K\n")
+                o.write("\n\n")
+                
+                o.write("Electrolyte\n")
+                o.write(f"Entropy fluxes difference:       {dJs_electrolyte:.9f} W/m2/K\n")
+                o.write(f"Entropy production:              {sigma_electrolyte[-1]:.9f} W/m2/K\n")
+                o.write("\n\n")
+                
+                o.write("Cathode Surface\n")
+                o.write(f"Entropy fluxes difference:       {dJs_cathode_sf:.9f} W/m2/K\n")
+                o.write(f"Entropy production               {sigma_cathode_sf:.9f} W/m2/K\n")
+                o.write("\n\n")
+                
+                o.write("Cathode\n")
+                o.write(f"Entropy fluxes difference:       {dJs_cathode:.9f} W/m2/K\n")
+                o.write(f"Entropy production:              {sigma_cathode[-1]:.9f} W/m2/K\n")
+                o.write("\n\n")
+        
+                o.write("Partial Molar Entropies where determined, using the Peltier heat, Peltier coefficient and the local temperatures\n")
+                o.write(f"Partial Molar Entropy of Anode Surface:              {S_ae:.1f} J/mol/K\n")
+                o.write(f"Partial Molar Entropy of Anode on left-hand-side:    {S_ao:.1f} J/mol/K\n")
+                o.write(f"Partial Molar Entropy of Cathode Surface:            {S_ce:.1f} J/mol/K\n")
+                o.write(f"Partial Molar Entropy of Cathode on right-hand-side: {S_co:.1f} J/mol/K\n")
+  
     def plot(self):
         """
         plots Temperature, Potential, Concentration, Heat Flux and Entropy production
