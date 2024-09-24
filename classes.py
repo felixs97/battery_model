@@ -659,7 +659,7 @@ class Surface(Submodel):
         float
             returns the overpotential
         """
-        return 2*R*Tamb / F * np.log10(j/j0)
+        return 2*R*Tamb / F * np.log10(abs(j)/j0)
         
     def __def_params(self):
         """
@@ -670,6 +670,9 @@ class Surface(Submodel):
         j0 = self.params["exchange current density"]
         lambda_ = self.params["thermal conductivity"]
         k = self.params["correction factor"]
+
+        #if j < 0:
+        #    OCP = -OCP      # switch sign of OCP for negative currents (charging of cell)
 
         self.params["gibbs energy"] = - OCP * F
         self.params["overpotential"] = self.__overpotential(j0)
@@ -749,7 +752,7 @@ class Surface(Submodel):
         dT_is, dT_so, T_s = self.vars["dT_is"], self.vars["dT_so"], self.vars["T"]
         dphi = self.vars["dphi"]
         dG = self.params["gibbs energy"]
-        
+
         return -Jq_io/(T_io*T_s) * dT_is - Jq_oi/(T_oi*T_s) * dT_so - j/T_s*(dphi + dG/F)
 
 #%%% electrode
@@ -827,7 +830,7 @@ class Electrode(Submodel):
     
     def J_i(self):
         """
-        calcualte molar flux
+        calculate molar flux
 
         Returns
         -------
@@ -840,7 +843,7 @@ class Electrode(Submodel):
     
     def dphidx(self):
         """
-        calcualtes dphidx
+        calculates dphidx
 
         Returns
         -------
@@ -856,7 +859,7 @@ class Electrode(Submodel):
     
     def dcdx(self):
         """
-        calcualtes dcdx
+        calculates dcdx
 
         Returns
         -------
@@ -998,7 +1001,7 @@ class Electrolyte(Submodel):
     
     def dphidx(self):
         """
-        calcualte dphidx
+        calculate dphidx
 
         Returns
         -------
