@@ -51,8 +51,8 @@ parameter = {
     "Anode Surface": {
         "length":                      50     * 10**(-9),      # m
         "thermal conductivity":         0.65,                  # W/m/K
-        "OCP":                         -0.15,                  # V
-        "exchange current density":     0.8,                   # A/m^2
+        "OCP":                          0.10,                  # V
+        "exchange current density":     0.87,                  # A/m^2
         "peltier heat":              -104     * 10**3,         # J/mol
         "correction factor":           14                      # -
         }, 
