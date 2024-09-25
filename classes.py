@@ -509,7 +509,7 @@ class LiionModel:
             
         elif quantity == "phi":
             ax.plot(phi_data["x"], phi_data["phi"], color="r", linewidth=2)
-            ax.plot([0, 74, 74, 86, 86, 153], [0, 0, -0.15, -0.15, 3.3, 3.3], color="b", linewidth=1, linestyle="--")
+            ax.plot([0, 74, 74, 86, 86, 153], [0, 0, 0.10, 0.10, 3.55, 3.55], color="b", linewidth=1, linestyle="--")
         
         elif quantity == "sigma accumulated":
             ax.plot(sigma_ac_data["x"], sigma_ac_data["sigma_ac"], color="r", linewidth=2)
@@ -584,7 +584,10 @@ class LiionModel:
         if quantity == "sigma accumulated":
             ax.set_ylabel(r"$\sigma$ / W m$^{-2}$ K$^{-1}$")
             #ax.set_title("Accumulated entropy production", fontsize=13)
+
+        fig.savefig(f'{quantity}_results.png')
         plt.show()
+
 #%% submodel
 class Submodel:
     def  __init__(self, model, name, mass_trans = True):
@@ -659,7 +662,11 @@ class Surface(Submodel):
         float
             returns the overpotential
         """
-        return 2*R*Tamb / F * np.log10(abs(j)/j0)
+
+        if j > 0:
+            return 2*R*Tamb / F * np.log(abs(j)/j0)
+        if j < 0:
+            return -2*R*Tamb / F * np.log(abs(j)/j0)
         
     def __def_params(self):
         """
@@ -680,7 +687,7 @@ class Surface(Submodel):
     
     def partial_molar_entropy(self, i, o):
         """
-        Calcualte partial molar entropy of surface using the peltier heat and peltier coefficents
+        Calculate partial molar entropy of surface using the peltier heat and peltier coefficents
 
         Parameters
         ----------
@@ -729,7 +736,7 @@ class Surface(Submodel):
         
         dT_is, dT_so = self.vars["dT_is"], self.vars["dT_so"] 
         T_io, T_oi = i.vars["T"][-1], o.vars["T"][0]
-        
+
         return -pi_i/(T_io*F) * dT_is - pi_o/(T_oi*F) * dT_so - eta - dG/F
     
     def sigma(self, i, o):
