@@ -29,7 +29,7 @@ model.plot()
 ```
 
 ### `params_sys.py`
-Containig physical constants and system parameters like ambient temperature
+Containing physical constants and system parameters like ambient temperature (Tamb) and current density (j). A positive current density models discharging while a negative current density models charging of the cell.
 
 ### `params_LFP.py`
 Dictionary with all material properties of cell to be modeled. 
