@@ -7,14 +7,10 @@ Created on Sat Jan 27 12:46:41 2024
 """
 
 from params_sys import Tamb
-import params_LFP, params_LFP2, params_LFP3, params_LFP4  
-import params_LCO
-import classes_new as c
+import params_LFP, params_LFP_averageRHE, params_LFP_neglectRHE
+import classes as c
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import StrMethodFormatter
-from matplotlib.lines import Line2D
-
 
 model1 = c.LiionModel("local RHE", params_LFP)  
 model1.init_mesh({"Anode":       100, 
@@ -23,33 +19,21 @@ model1.init_mesh({"Anode":       100,
 model1.boundary_conditions(Tamb, Tamb)
 model1.solve()
 
-model2 = c.LiionModel("average RHE", params_LFP2)  
+
+model2 = c.LiionModel("average RHE", params_LFP_averageRHE)  
 model2.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model2.boundary_conditions(Tamb, Tamb)
 model2.solve()
 
-model3 = c.LiionModel("without RHE", params_LFP3)  
+model3 = c.LiionModel("without RHE", params_LFP_neglectRHE)  
 model3.init_mesh({"Anode":       100, 
                  "Electrolyte":  20,
                  "Cathode":     100}) 
 model3.boundary_conditions(Tamb, Tamb)
 model3.solve()
 
-model4 = c.LiionModel("LCO", params_LCO)  
-model4.init_mesh({"Anode":       100, 
-                 "Electrolyte":  20,
-                 "Cathode":     100}) 
-model4.boundary_conditions(Tamb, Tamb)
-model4.solve()
-
-model5 = c.LiionModel("LFP", params_LFP)  
-model5.init_mesh({"Anode":       100, 
-                 "Electrolyte":  20,
-                 "Cathode":     100}) 
-model5.boundary_conditions(Tamb, Tamb)
-model5.solve()
 
 def plot(*models):
     fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
@@ -86,7 +70,8 @@ def plot(*models):
     ax.set_yticks(y_ticks)
     ax.set_yticklabels([f"{tick:.4f}" for tick in y_ticks])
     
-    ax.plot([0,153.06], [290,290], color="blue", linestyle="--")
+    #ax.plot([0,153.06], [290,290], color="blue", linestyle="--")
+    plt.show()
 
 def plot_Jq(*models):
     fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
@@ -110,10 +95,6 @@ def plot_Jq(*models):
             ax.plot(submodel.vars["x"]*10**6, submodel.vars["Jq"], color=colors[i], linewidth=2)
             
     ax.legend(lines, labels)
-
-
-
-
 
 def plot_surface(*models, surface):
     fig, ax = plt.subplots(figsize=(3, 4), dpi=200)
@@ -165,22 +146,15 @@ def plot_surface(*models, surface):
     
     ax.yaxis.set_major_formatter(StrMethodFormatter("{x:.4f}"))
     
+    
+plot(model1, model2, model3)
 
 
 #plot_Jq(model5, model4)
 #plot(model5, model4)
 #plot(model1, model2, model3)
-plot_Jq(model1, model2, model3)
+#plot_Jq(model1, model2, model3)
 
 print(f"{model3.name}, out - in: {model3.cathode.vars['Jq'][-1] - model3.anode.vars['Jq'][0]}")
 print(f"{model2.name}, out - in: {model2.cathode.vars['Jq'][-2] - model2.anode.vars['Jq'][0]}")
-print(f"{model1.name}, out - in: {model1.cathode.vars['Jq'][-1] - model1.anode.vars['Jq'][0]}")
-
-print(f"{model4.name}, out - in: {model4.cathode.vars['Jq'][-1] - model4.anode.vars['Jq'][0]}")
-print(f"{model5.name}, out - in: {model5.cathode.vars['Jq'][-1] - model5.anode.vars['Jq'][0]}")
-#plot(model1)
-#plot_surface(model1, surface="Anode")
-#plot_surface(model1, surface="Cathode")
-
-#plot_surface(model1, model2, model3, model4, surface="Anode")
-#plot_surface(model1, model2, model3, model4, surface="Cathode")
+print(f"{model1.name},   out - in: {model1.cathode.vars['Jq'][-1] - model1.anode.vars['Jq'][0]}")
